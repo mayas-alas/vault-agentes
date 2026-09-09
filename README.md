@@ -21,20 +21,32 @@ src/application/  Casos de uso y estado de la experiencia
 src/adapters/     API mock y capacidades del navegador
 src/ui/           Escenas Three.js
 src/main.js       Composición e interacciones de la página
-server.js         Servidor dev, live reload y frontera OpenAI
+server.js         Servidor dev, live reload y frontera de gateway privado
 ```
 
-El frontend nunca recibe la API key. `server.js` usa Responses API con `gpt-5.6-terra`, razonamiento `medium`, historial corto y `store: false`. Si la llave no está disponible, Lumen conserva el fallback local de la demo.
+El frontend nunca recibe la API key. `server.js` consume un gateway compatible con Responses mediante `AI_BASE_URL`, `AI_API_KEY` y `AI_MODEL=auto`; mantiene historial corto y `store: false`. Si la llave no está disponible, Lumen conserva el fallback local de la demo.
 
 ## Entrada al vault
 
 `Entrar al vault` simula identidad OAuth, consentimiento y callback antes de abrir un workspace inmersivo independiente de la landing. La experiencia permite conversar con Lumen y probar conexiones adicionales; solo se guardan IDs de demo, nunca tokens.
 
-La sesión se minimiza como una burbuja arrastrable. Active Thread funciona con flujos guiados y respuestas rápidas, sin teclado. El control de Lumen graba audio con `MediaRecorder`, lo transcribe en el servidor con `gpt-4o-mini-transcribe` y envía el texto resultante a Terra; conserva reconocimiento/fallback local si el navegador no permite grabar.
+La sesión se minimiza como una burbuja arrastrable. Active Thread funciona con flujos guiados y respuestas rápidas, sin teclado. El control de Lumen usa `MediaRecorder`, transcribe por `/api/transcribe`, genera respuesta con el gateway y prueba `/api/speech`; si TTS no está disponible conserva la voz del navegador.
+
+Dentro del vault, `Ctrl+K` abre el índice cinematográfico de 30 clientes demo derivados de señales de WhatsApp. Buscar y elegir un contacto muestra contexto comercial y permite trabajar el siguiente paso con Lumen.
+
+## FreeLLMAPI y proxy de salida
+
+La versión validada es `v0.9.8`. Para enrutar proveedores por SOCKS, configura en FreeLLMAPI → Claves → Proxy de salida:
+
+```text
+socks5h://127.0.0.1:1080
+```
+
+Actívalo sólo cuando el puerto `1080` tenga un listener; de otro modo las llamadas al gateway fallarán. `socks5h` mantiene la resolución DNS dentro del proxy.
 
 ## Funnel
 
-El host público solo entrega la interfaz por defecto. Las rutas que consumen OpenAI (`/api/chat` y `/api/transcribe`) quedan deshabilitadas desde Funnel para evitar exponer la llave a uso público. Puedes habilitarlo conscientemente solo con `ALLOW_PUBLIC_AI=true` en el entorno del servidor.
+El host público solo entrega la interfaz por defecto. Las rutas que consumen el gateway (`/api/chat` y `/api/transcribe`) quedan deshabilitadas desde Funnel para evitar exponer la llave a uso público. Puedes habilitarlo conscientemente solo con `ALLOW_PUBLIC_AI=true` en el entorno del servidor.
 
 ```powershell
 tailscale funnel --bg --yes 4175

@@ -4,6 +4,6 @@
   "type": "module",
   "scripts": {
     "dev": "node server.js",
-    "check": "node --check server.js && node --check src/main.js && node --check src/ui/vault-experience.js && node --check src/adapters/browser-voice.js"
+    "check": "node --check server.js && node --check src/main.js && node --check src/ui/vault-experience.js && node --check src/ui/client-command.js && node --check src/ui/layered-navigation.js && node --check src/adapters/browser-voice.js && node --check src/domain/demo-clients.js"
   }
 }

@@ -21,5 +21,8 @@ export class BrowserVoiceAdapter{
     if(recorder&&recorder.state!=='inactive')audio=await new Promise(resolve=>{recorder.onstop=()=>{const blob=new Blob(this.chunks,{type:recorder.mimeType||'audio/webm'});resolve(blob.size?{blob,mime:blob.type}:null)};recorder.stop()});
     this.recorder=null;this.chunks=[];this.stream?.getTracks().forEach(track=>track.stop());this.stream=null;await this.context?.close();this.context=null;return audio;
   }
-  speak(text,onEnd=()=>{}){if(!('speechSynthesis'in window)){onEnd();return}speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(text);utterance.lang='es-MX';utterance.rate=.97;utterance.pitch=.94;utterance.onend=onEnd;speechSynthesis.speak(utterance)}
+  async speak(text,onEnd=()=>{}){
+    const fallback=()=>{if(!('speechSynthesis'in window)){onEnd();return}speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(text);utterance.lang='es-MX';utterance.rate=.97;utterance.pitch=.94;utterance.onend=onEnd;utterance.onerror=onEnd;speechSynthesis.speak(utterance)};
+    try{const response=await fetch('/api/speech',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text})});if(!response.ok)throw new Error('remote voice unavailable');const url=URL.createObjectURL(await response.blob()),audio=new Audio(url),done=()=>{URL.revokeObjectURL(url);onEnd()};audio.onended=done;audio.onerror=()=>{URL.revokeObjectURL(url);fallback()};await audio.play()}catch{fallback()}
+  }
 }
