@@ -75,6 +75,8 @@ main section[id]{scroll-margin-top:calc(var(--compact-nav-height) + 24px)}
 /* OAuth and vault own the viewport while open. */
 .vault-gateway{z-index:210}
 .vault-experience{z-index:200}
+.vault-experience:not([hidden]){position:fixed;inset:0;width:100vw;height:100dvh;min-height:0;max-height:100dvh;border-radius:0}
+.vault-experience:not([hidden]) .vault-os-grid{height:calc(100dvh - 62px);min-height:0}
 .vault-open>.nav-shell,.vault-open>.chapter-nav,.vault-open>.page-progress{opacity:0;visibility:hidden;pointer-events:none}
 .vault-open>.nav-shell,.vault-open>.chapter-nav{transition:opacity .2s var(--ease),visibility 0s linear .2s}
 
