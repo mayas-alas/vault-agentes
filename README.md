@@ -1,16 +1,23 @@
 # GNX Vault presentation layer
 
-Demo estática para presentar el flujo de GNX Labs: onboarding, conexiones de WhatsApp y Google Calendar, y asignación de un agente asistente.
+Landing interactiva para presentar el vault de GNX Labs: onboarding inteligente, conexiones, contexto persistente y colaboración por voz con un agente.
 
 ## Ejecutar
 
-Abre `index.html` en el navegador. No requiere instalación ni servidor local.
+Sirve la carpeta con cualquier servidor estático y abre `http://localhost:4173`:
+
+```powershell
+python -m http.server 4173
+```
 
 ## Estructura
 
-- `index.html`: markup y pantallas del prototipo.
-- `styles.css`: sistema visual responsive.
-- `app.js`: navegación, estados mock y eventos de demo.
-- `GNX_LABS_PROPUESTA.md`: propuesta de producto y contratos de integración.
+```text
+src/domain/       Modelo y catálogo de capacidades
+src/application/  Casos de uso y estado de la experiencia
+src/adapters/     API mock y capacidades del navegador
+src/ui/           Escenas Three.js
+src/main.js       Composición e interacciones de la página
+```
 
-La demo no contiene secretos ni servicios de terceros. Para conectar APIs reales, sustituye las acciones mock de `app.js` por un cliente HTTP hacia el servidor de integración.
+No hay backend local. `MockVaultAdapter` simula los contratos del servidor y persiste únicamente contexto de demostración en `localStorage`. Las API keys nunca se persisten ni salen del formulario mock.

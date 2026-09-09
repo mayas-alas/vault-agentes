@@ -2,18 +2,18 @@
 
 ## Resumen
 
-GNX Vault será el punto de entrada que convierte contexto de cliente en una operación conectada. El prototipo presenta una experiencia breve y clara: el cliente comparte su contexto en onboarding, conecta WhatsApp y Google Calendar, y recibe una propuesta de agente asistente. La app es únicamente frontend estático en HTML, CSS y JavaScript vanilla; consume un servidor externo de integraciones e inteligencia.
+GNX Vault será el punto de entrada que convierte contexto de cliente en una operación conectada. La experiencia guía al cliente desde una landing breve hacia tres acciones: conectar su mundo, construir contexto permanente y colaborar en vivo con un agente. La app es únicamente frontend en HTML, CSS, JavaScript vanilla y Three.js; consume un servidor externo de integraciones e inteligencia.
 
 El repositorio no contenía archivos Markdown ni servicios existentes para resumir. La demo queda en modo mock para que el cliente pueda recorrer el flujo sin credenciales reales.
 
 ## Flujo de cliente
 
 1. **Onboarding:** captura nombre del proyecto, prioridad operativa e insight personal.
-2. **Overview:** muestra el siguiente paso, avance del onboarding, estado de conexiones e insight del día.
-3. **Conexiones:** presenta WhatsApp y Google Calendar como dos capacidades independientes con sus estados.
+2. **Landing:** comunica confianza, valor y control antes de solicitar una conexión.
+3. **Conexiones:** presenta WhatsApp, Google Calendar, GitHub, Tailscale y el runtime OpenAI/API local.
 4. **WhatsApp:** el frontend solicita al servidor el estado y el QR de Hermes Agent; el cliente escanea y la UI refleja la sesión.
 5. **Google Calendar:** el frontend inicia un flujo OAuth del servidor y luego muestra la cuenta conectada, permisos y estado.
-6. **Agent match:** se muestra el agente sugerido, por qué encaja y la acción para asignarlo al workspace.
+6. **Live agent:** una interfaz de voz continua visualiza las ondas, conserva el hilo y convierte acuerdos en objetivos compartidos.
 
 ## Pantallas del prototipo
 
