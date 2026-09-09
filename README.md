@@ -30,4 +30,13 @@ El frontend nunca recibe la API key. `server.js` usa Responses API con `gpt-5.6-
 
 `Entrar al vault` simula identidad OAuth, consentimiento y callback antes de abrir un workspace inmersivo independiente de la landing. La experiencia permite conversar con Lumen y probar conexiones adicionales; solo se guardan IDs de demo, nunca tokens.
 
-La sesión se minimiza como una burbuja arrastrable. Active Thread funciona con flujos guiados y respuestas rápidas, sin teclado. El control de Lumen ofrece `Mantener y enviar` y `Escucha continua`; la transcripción del navegador se envía al servidor como contexto para Terra y conserva fallback local si la API no está disponible.
+La sesión se minimiza como una burbuja arrastrable. Active Thread funciona con flujos guiados y respuestas rápidas, sin teclado. El control de Lumen graba audio con `MediaRecorder`, lo transcribe en el servidor con `gpt-4o-mini-transcribe` y envía el texto resultante a Terra; conserva reconocimiento/fallback local si el navegador no permite grabar.
+
+## Funnel
+
+El host público solo entrega la interfaz por defecto. Las rutas que consumen OpenAI (`/api/chat` y `/api/transcribe`) quedan deshabilitadas desde Funnel para evitar exponer la llave a uso público. Puedes habilitarlo conscientemente solo con `ALLOW_PUBLIC_AI=true` en el entorno del servidor.
+
+```powershell
+tailscale funnel --bg --yes 4175
+tailscale funnel status
+```
