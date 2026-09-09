@@ -21,7 +21,3 @@ src/main.js       Composición e interacciones de la página
 ```
 
 No hay backend local. `MockVaultAdapter` simula los contratos del servidor y persiste únicamente contexto de demostración en `localStorage`. Las API keys nunca se persisten ni salen del formulario mock.
-
-## Flujo post-auth
-
-Desde `Live agent`, `Conectar mas cuentas` lleva a una escena sticky y scroll-driven. El handoff simula OAuth para cuatro capacidades de siguiente release: Hugging Face, Instagram, Notion y Slack. La escena Three.js responde al scroll y al arrastre; la demo solo persiste IDs de conexiones aprobadas, nunca tokens ni secretos.
