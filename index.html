@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#091310" />
+    <meta name="description" content="GNX Labs Vault: conexiones, contexto y agentes para operar mejor." />
+    <title>GNX Vault — Client workspace</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Navegacion principal">
+        <a class="brand" href="#overview" data-view="overview" aria-label="GNX Vault inicio">
+          <span class="brand-mark"><span></span><span></span><span></span></span>
+          <span>gnx<span class="brand-light">vault</span></span>
+        </a>
+
+        <div class="workspace-switcher">
+          <span class="eyebrow">WORKSPACE</span>
+          <button class="workspace-button" type="button" aria-label="Cambiar workspace">
+            <span class="workspace-avatar">AB</span>
+            <span class="workspace-name">Alba Studio</span>
+            <span class="chevron">⌄</span>
+          </button>
+        </div>
+
+        <nav class="nav-list">
+          <a class="nav-item active" href="#overview" data-view="overview"><span class="nav-icon">⌂</span>Overview</a>
+          <a class="nav-item" href="#onboarding" data-view="onboarding"><span class="nav-icon">✦</span>Tu contexto <span class="nav-badge">1</span></a>
+          <a class="nav-item" href="#connections" data-view="connections"><span class="nav-icon">⌁</span>Conexiones</a>
+          <a class="nav-item" href="#assistant" data-view="assistant"><span class="nav-icon">◉</span>Tu asistente</a>
+        </nav>
+
+        <div class="sidebar-bottom">
+          <div class="help-card">
+            <span class="help-spark">✦</span>
+            <strong>Necesitas ayuda?</strong>
+            <span>Habla con tu equipo GNX</span>
+            <button type="button" data-action="help">Abrir soporte <span>↗</span></button>
+          </div>
+          <div class="account-row">
+            <span class="user-avatar">MS</span>
+            <span class="account-copy"><strong>Maya Salas</strong><span>Owner</span></span>
+            <button class="more-button" type="button" aria-label="Mas opciones">•••</button>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div class="breadcrumbs"><span>Workspace</span><span class="slash">/</span><strong>Overview</strong></div>
+          <div class="topbar-actions">
+            <button class="icon-button" type="button" data-action="notifications" aria-label="Notificaciones"><span class="notification-dot"></span>♧</button>
+            <button class="topbar-help" type="button" data-action="help">Ayuda <span>↗</span></button>
+          </div>
+        </header>
+
+        <section class="view active" id="overview" data-view-panel="overview">
+          <div class="page-intro">
+            <div>
+              <span class="eyebrow accent">GNX VAULT / CLIENT PREVIEW</span>
+              <h1>Hola, Maya <span class="wave">✦</span></h1>
+              <p>Tu contexto ya tiene un lugar. Conecta tus herramientas y deja que tu asistente ordene lo que sigue.</p>
+            </div>
+            <div class="status-pill"><span class="status-dot"></span>Todo en calma <span class="pill-arrow">↗</span></div>
+          </div>
+
+          <div class="hero-card">
+            <div class="hero-copy">
+              <span class="card-kicker">NEXT BEST STEP</span>
+              <h2>Completa tu contexto<br /><em>para activar tu vault.</em></h2>
+              <p>Unos minutos de claridad ahora. Una mejor operacion todos los dias.</p>
+              <button class="button primary" type="button" data-navigate="onboarding">Continuar onboarding <span>→</span></button>
+            </div>
+            <div class="orbital-art" aria-hidden="true">
+              <div class="orbit orbit-a"></div><div class="orbit orbit-b"></div><div class="orbit orbit-c"></div>
+              <div class="core"><span>gnx</span><small>VAULT</small></div>
+              <span class="float-tag tag-one">context</span><span class="float-tag tag-two">signal</span><span class="float-tag tag-three">flow</span>
+            </div>
+            <div class="hero-progress"><span>1</span><span>de</span><span>3 pasos</span><div class="progress-track"><i style="width: 34%"></i></div></div>
+          </div>
+
+          <div class="section-heading"><div><span class="eyebrow">TU OPERACION, EN UN SOLO LUGAR</span><h2>Todo empieza por tus conexiones.</h2></div><button class="text-button" type="button" data-navigate="connections">Ver conexiones <span>→</span></button></div>
+          <div class="metrics-grid">
+            <article class="metric-card connection-card">
+              <div class="metric-top"><span class="metric-icon whatsapp-icon">◌</span><span class="connection-status pending">Pendiente</span></div>
+              <h3>WhatsApp</h3><p>Conecta tu canal principal de comunicacion.</p><button class="inline-action" type="button" data-modal="whatsapp">Conectar <span>→</span></button>
+            </article>
+            <article class="metric-card connection-card">
+              <div class="metric-top"><span class="metric-icon calendar-icon">▦</span><span class="connection-status pending">Pendiente</span></div>
+              <h3>Google Calendar</h3><p>Haz visibles tus tiempos y tus prioridades.</p><button class="inline-action" type="button" data-action="calendar">Conectar <span>→</span></button>
+            </article>
+            <article class="metric-card assistant-card">
+              <div class="metric-top"><span class="metric-icon assistant-icon">✦</span><span class="connection-status ready">Listo para ti</span></div>
+              <h3>Agente asistente</h3><p>Un copiloto para coordinar, responder y avanzar.</p><button class="inline-action" type="button" data-navigate="assistant">Conocer agente <span>→</span></button>
+            </article>
+          </div>
+
+          <div class="insight-strip"><div class="insight-icon">✦</div><div><span class="eyebrow">INSIGHT DEL DIA</span><p>Las conexiones correctas convierten el contexto en movimiento. <strong>Tu siguiente paso puede ser simple.</strong></p></div><span class="insight-line"></span></div>
+        </section>
+
+        <section class="view" id="onboarding" data-view-panel="onboarding">
+          <div class="page-intro compact"><div><span class="eyebrow accent">PASO 01 / CONTEXTO</span><h1>Cuéntanos cómo se mueve tu mundo.</h1><p>Este es el punto de partida para asignarte el asistente adecuado.</p></div><div class="step-counter"><strong>01</strong><span>/ 03</span></div></div>
+          <div class="onboarding-layout">
+            <form class="onboarding-form" id="onboarding-form">
+              <div class="form-section"><span class="form-number">01</span><div><label for="company">Cómo se llama tu proyecto?</label><span class="field-hint">El nombre que quieres ver en tu vault.</span><input id="company" name="company" type="text" value="Alba Studio" required /></div></div>
+              <div class="form-section"><span class="form-number">02</span><div><label for="role">Qué quieres ordenar primero?</label><span class="field-hint">Puedes cambiarlo después.</span><select id="role" name="role"><option value="operations">Operación y seguimiento</option><option value="sales">Ventas y clientes</option><option value="team">Equipo y coordinación</option><option value="personal">Agenda personal</option></select></div></div>
+              <div class="form-section"><span class="form-number">03</span><div><label for="insight">Qué debería entender tu asistente de ti?</label><span class="field-hint">Una frase basta. Este insight guía la configuración.</span><textarea id="insight" name="insight" rows="4" placeholder="Ej. Necesito cuidar mis mañanas para trabajo profundo..."></textarea></div></div>
+              <div class="form-footer"><span class="save-state" id="save-state">Se guarda automáticamente</span><button class="button primary" type="submit">Guardar contexto <span>→</span></button></div>
+            </form>
+            <aside class="context-preview"><div class="preview-top"><span class="eyebrow">VISTA PREVIA</span><span class="preview-live"><span class="status-dot"></span>Live</span></div><div class="preview-orb"><div class="mini-core">✦</div><span class="mini-label label-a">tu insight</span><span class="mini-label label-b">tu ritmo</span></div><h3>Tu asistente empieza a escucharte.</h3><p>El contexto que compartes se convierte en una forma de trabajo más tuya.</p><div class="context-tags"><span>ritmo</span><span>prioridades</span><span>señales</span></div></aside>
+          </div>
+        </section>
+
+        <section class="view" id="connections" data-view-panel="connections">
+          <div class="page-intro compact"><div><span class="eyebrow accent">CAPA DE CONEXIONES</span><h1>Trae tus canales a un mismo pulso.</h1><p>El vault presenta estados y consume las APIs de tu servidor de integración.</p></div><div class="connection-summary"><strong id="connected-count">0</strong><span>de 2 conectadas</span></div></div>
+          <div class="connection-list">
+            <article class="integration-row" data-integration="whatsapp"><div class="integration-brand whatsapp-icon">◌</div><div class="integration-copy"><div class="integration-title"><h2>WhatsApp</h2><span class="connection-status pending" data-status>Sin conectar</span></div><p>Recibe respuestas, atiende flujos definidos y mantén la comunicación externa en un solo lugar.</p><span class="api-note">Hermes Agent · QR handoff</span></div><button class="button outline" type="button" data-modal="whatsapp" data-connect-button>Mostrar QR <span>↗</span></button></article>
+            <article class="integration-row" data-integration="calendar"><div class="integration-brand calendar-icon">▦</div><div class="integration-copy"><div class="integration-title"><h2>Google Calendar</h2><span class="connection-status pending" data-status>Sin conectar</span></div><p>Comparte disponibilidad, eventos y ventanas de trabajo con tu agente asistente.</p><span class="api-note">OAuth 2.0 · Google Cloud</span></div><button class="button outline" type="button" data-action="calendar" data-connect-button>Autorizar acceso <span>↗</span></button></article>
+          </div>
+          <div class="security-note"><span>⌁</span><div><strong>Diseñado para cuidar tu acceso.</strong><p>El navegador recibe una sesión o token temporal del backend. Las claves de Google y las credenciales de Hermes permanecen en el servidor de integración.</p></div></div>
+        </section>
+
+        <section class="view" id="assistant" data-view-panel="assistant">
+          <div class="page-intro compact"><div><span class="eyebrow accent">AGENT MATCH</span><h1>Conoce a tu agente asistente.</h1><p>Una propuesta inicial basada en tu contexto. Tú decides cuándo activarla.</p></div><span class="match-score"><strong>92%</strong><span>match de contexto</span></span></div>
+          <div class="assistant-layout"><article class="assistant-profile"><div class="profile-art"><div class="profile-glow"></div><span class="profile-symbol">✦</span><span class="profile-ring ring-1"></span><span class="profile-ring ring-2"></span></div><span class="eyebrow">RECOMENDADO PARA ALBA STUDIO</span><h2>Lumen</h2><p class="agent-role">Tu agente de ritmo y respuesta</p><p class="agent-description">Lumen te ayuda a proteger tus prioridades, preparar respuestas para tus contactos y convertir tu agenda en una secuencia más ligera.</p><div class="agent-skills"><span>Agenda</span><span>WhatsApp</span><span>Seguimiento</span></div><button class="button primary wide" type="button" data-action="assign">Asignar a mi workspace <span>→</span></button></article><div class="assistant-side"><div class="recommendation-card"><span class="eyebrow">POR QUÉ LUMEN</span><div class="reason"><span>01</span><p>Detecta ventanas de concentración en tu calendario.</p></div><div class="reason"><span>02</span><p>Propone el siguiente paso antes de que se vuelva urgente.</p></div><div class="reason"><span>03</span><p>Cuida tu tono cuando la comunicación sale de tu equipo.</p></div></div><div class="assistant-preview"><span class="eyebrow">PRIMERA SEÑAL</span><div class="message-bubble"><span class="tiny-avatar">L</span><div><strong>Lumen <small>ahora</small></strong><p>Veo que tienes tres reuniones seguidas el jueves. ¿Reservamos 30 minutos para cerrar pendientes?</p></div></div></div></div></div>
+        </section>
+      </main>
+    </div>
+
+    <div class="modal-backdrop" id="modal-backdrop" hidden>
+      <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <button class="modal-close" type="button" data-action="close-modal" aria-label="Cerrar">×</button>
+        <div class="modal-eyebrow"><span class="whatsapp-icon">◌</span><span class="eyebrow">HERMES AGENT</span></div>
+        <h2 id="modal-title">Conecta tu WhatsApp.</h2><p>Abre WhatsApp en tu teléfono y escanea este código para iniciar la sesión segura.</p>
+        <div class="qr-wrap"><div class="fake-qr" aria-label="Código QR de demostración"></div><span class="qr-corner corner-tl"></span><span class="qr-corner corner-tr"></span><span class="qr-corner corner-bl"></span></div>
+        <div class="qr-status"><span class="pulse-dot"></span><span id="qr-status-text">Esperando escaneo…</span></div>
+        <button class="button outline wide" type="button" data-action="simulate-whatsapp">Simular conexión <span>→</span></button>
+        <small class="modal-footnote">Demo visual · el QR real llegará desde la API de Hermes Agent.</small>
+      </section>
+    </div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="app.js"></script>
+  </body>
+</html>
