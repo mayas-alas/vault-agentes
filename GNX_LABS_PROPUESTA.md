@@ -15,13 +15,13 @@ El repositorio no contenía archivos Markdown ni servicios existentes para resum
 5. **Google Calendar:** el frontend inicia un flujo OAuth del servidor y luego muestra la cuenta conectada, permisos y estado.
 6. **Live agent:** una interfaz de voz continua visualiza las ondas, conserva el hilo y convierte acuerdos en objetivos compartidos.
 
-## Pantallas del prototipo
+## Momentos del prototipo
 
-- `Overview`: resumen operativo para una primera reunión con el cliente.
-- `Tu contexto`: formulario breve con preview del contexto y guardado simulado.
-- `Conexiones`: tarjetas para WhatsApp y Calendar, estados `Sin conectar`, `Conectando`, `Conectado` y error.
-- `Tu asistente`: propuesta de agente, habilidades, razones de recomendación y primer ejemplo de ayuda.
-- Modal de WhatsApp: QR visual, espera de escaneo y confirmación de conexión.
+- `Landing`: propuesta de valor, confianza y escena 3D que representa el vault.
+- `Connect your world`: WhatsApp, Calendar, GitHub, Tailscale y OpenAI/API local con estados simulados.
+- `Shared context`: onboarding conversacional de una pregunta a la vez; el demo conserva respuestas no sensibles en el navegador.
+- `Live agent`: conversación continua con ondas reactivas, transcripción, acuerdos editables y objetivos compartidos.
+- `Trust layer`: explica de forma estratégica por qué las llaves habilitan capacidades y cómo mantiene el cliente el control.
 
 ## Contrato de consumo sugerido
 
@@ -34,8 +34,15 @@ GET  /api/v1/integrations/whatsapp/session
 POST /api/v1/integrations/whatsapp/session/refresh
 GET  /api/v1/integrations/google/start
 GET  /api/v1/integrations/google/status
+GET  /api/v1/integrations/github/start
+GET  /api/v1/integrations/github/status
+POST /api/v1/integrations/tailscale/connect
+POST /api/v1/integrations/runtime/connect
 POST /api/v1/agents/match
 POST /api/v1/agents/:id/assign
+POST /api/v1/sessions
+POST /api/v1/sessions/:id/turns
+POST /api/v1/sessions/:id/agreements
 ```
 
 Respuestas mínimas:
@@ -60,10 +67,11 @@ La propuesta usa un vault oscuro, silencioso y editorial: verde menta para seña
 
 ## Criterios de aceptación
 
-- La demo se abre como archivo estático y funciona sin build step.
-- Un cliente puede recorrer Overview, onboarding, conexiones y agente asistente.
-- El onboarding guarda su estado visual y enlaza con Conexiones.
+- La demo funciona con un servidor estático y no requiere build step.
+- Un cliente puede recorrer landing, conexiones, contexto y agente en vivo.
+- El onboarding guarda contexto no sensible y actualiza el mapa visual.
 - El modal de WhatsApp muestra el punto real de integración del QR y tiene estado simulado de conexión.
-- Google Calendar muestra un punto de entrada OAuth y estado simulado de conexión.
+- Calendar y GitHub muestran puntos de entrada OAuth; Tailscale comunica conexión privada y AI Runtime permite elegir OpenAI o API local.
+- La conversación por voz reacciona al micrófono cuando hay permiso y entra en modo demo cuando no lo hay.
 - La app es responsive y tiene estados de vacío, pendiente, conectado y feedback de acción.
 - No hay credenciales reales, backend local ni llamadas a terceros desde esta demo.
