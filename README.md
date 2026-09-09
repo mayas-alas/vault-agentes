@@ -2,13 +2,16 @@
 
 Landing interactiva para presentar el vault de GNX Labs: onboarding inteligente, conexiones, contexto persistente y colaboración por voz con un agente.
 
-## Ejecutar
+## Desarrollo
 
-Sirve la carpeta con cualquier servidor estático y abre `http://localhost:4173`:
+Carga el `.env` privado del repositorio principal y abre `http://localhost:4175`:
 
 ```powershell
-python -m http.server 4173
+$env:VAULT_ENV_FILE='C:\Users\mayas\orca\vault-agentes\.env'
+npm run dev
 ```
+
+El servidor recarga el navegador al cambiar HTML, CSS o JavaScript. `GET /api/health` indica si Terra está configurada sin revelar la llave.
 
 ## Estructura
 
@@ -18,10 +21,13 @@ src/application/  Casos de uso y estado de la experiencia
 src/adapters/     API mock y capacidades del navegador
 src/ui/           Escenas Three.js
 src/main.js       Composición e interacciones de la página
+server.js         Servidor dev, live reload y frontera OpenAI
 ```
 
-No hay backend local. `MockVaultAdapter` simula los contratos del servidor y persiste únicamente contexto de demostración en `localStorage`. Las API keys nunca se persisten ni salen del formulario mock.
+El frontend nunca recibe la API key. `server.js` usa Responses API con `gpt-5.6-terra`, razonamiento `medium`, historial corto y `store: false`. Si la llave no está disponible, Lumen conserva el fallback local de la demo.
 
 ## Entrada al vault
 
 `Entrar al vault` simula identidad OAuth, consentimiento y callback antes de abrir un workspace inmersivo independiente de la landing. La experiencia permite conversar con Lumen y probar conexiones adicionales; solo se guardan IDs de demo, nunca tokens.
+
+La sesión se minimiza como una burbuja arrastrable. Active Thread funciona con flujos guiados y respuestas rápidas, sin teclado. El control de Lumen ofrece `Mantener y enviar` y `Escucha continua`; la transcripción del navegador se envía al servidor como contexto para Terra y conserva fallback local si la API no está disponible.
