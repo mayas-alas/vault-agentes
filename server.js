@@ -2,7 +2,7 @@ import{createServer}from'node:http';import{readFileSync,existsSync,statSync,watc
 
 const root=process.cwd(),envFile=process.env.VAULT_ENV_FILE||join(root,'.env');
 if(existsSync(envFile))for(const raw of readFileSync(envFile,'utf8').split(/\r?\n/)){const line=raw.trim();if(!line||line.startsWith('#')||!line.includes('='))continue;const [name,...parts]=line.split('=');let value=parts.join('=').trim();if((value.startsWith('"')&&value.endsWith('"'))||(value.startsWith("'")&&value.endsWith("'")))value=value.slice(1,-1);if(!process.env[name.trim()])process.env[name.trim()]=value}
-const port=Number(process.env.PORT||4175),model=process.env.OPENAI_MODEL||'gpt-5.6-terra',effort=process.env.OPENAI_REASONING_EFFORT||'medium',apiKey=process.env.OPENAI_API_KEY||process.env.OPENAI_KEY,allowPublicAI=process.env.ALLOW_PUBLIC_AI==='true';
+const port=Number(process.env.PORT||4175),host='127.0.0.1',model=process.env.OPENAI_MODEL||'gpt-5.6-terra',effort=process.env.OPENAI_REASONING_EFFORT||'medium',apiKey=process.env.OPENAI_API_KEY||process.env.OPENAI_KEY,allowPublicAI=process.env.ALLOW_PUBLIC_AI==='true';
 const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.ico':'image/x-icon'};
 const liveClients=new Set();
 const json=(response,status,payload)=>{response.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store'});response.end(JSON.stringify(payload))};
@@ -44,6 +44,6 @@ const server=createServer(async(request,response)=>{
   const pathname=url.pathname==='/'?'/index.html':decodeURIComponent(url.pathname),file=resolve(root,'.'+pathname);if(!file.startsWith(root+sep)||!existsSync(file)||!statSync(file).isFile()){response.writeHead(404);return response.end('Not found')}
   response.writeHead(200,{'content-type':types[extname(file)]||'application/octet-stream','cache-control':'no-store'});response.end(readFileSync(file));
 });
-server.listen(port,()=>console.log(`GNX Vault dev · http://localhost:${port} · ${apiKey?`${model}/${effort}`:'mock (missing key)'}`));
+server.listen(port,host,()=>console.log(`GNX Vault dev · http://localhost:${port} · ${apiKey?`${model}/${effort}`:'mock (missing key)'}`));
 let reloadTimer;const watcher=watch(root,{recursive:true},(_,name)=>{if(!name||name.startsWith('.git')||name.includes('node_modules'))return;clearTimeout(reloadTimer);reloadTimer=setTimeout(()=>{for(const client of liveClients)client.write(`event: reload\ndata: ${Date.now()}\n\n`)},120)});
 process.on('SIGINT',()=>{watcher.close();for(const client of liveClients)client.end();server.close(()=>process.exit(0))});
