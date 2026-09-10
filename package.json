@@ -4,6 +4,14 @@
   "type": "module",
   "scripts": {
     "dev": "node server.js",
-    "check": "node --check server.js && node --check src/main.js && node --check src/ui/vault-experience.js && node --check src/adapters/browser-voice.js"
+    "check": "node --check server.js && node --check whatsapp-clients.js && node --check scripts/whatsapp-client.mjs && node --check src/main.js && node --check src/ui/vault-experience.js && node --check src/ui/whatsapp-client.js && node --check src/adapters/browser-voice.js",
+    "test:ui": "node tests/login-browser.mjs",
+    "test:qr": "node tests/client-browser.mjs"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
   }
 }

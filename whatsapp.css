@@ -1,0 +1,8 @@
+.whatsapp-qr{width:260px;height:260px;max-width:100%;margin:24px auto;display:grid;place-items:center;border-radius:10px;background:#fff;color:#14231b;overflow:hidden;text-align:center}
+.whatsapp-qr img{width:100%;height:100%;object-fit:contain;image-rendering:pixelated}
+.whatsapp-qr [hidden]{display:none}
+.modal-action:disabled{opacity:.65;cursor:wait}
+.modal-backdrop{z-index:1000}.modal{max-height:90vh;overflow-y:auto}
+#client-messages{max-height:240px;overflow:auto;overflow-wrap:anywhere}
+#contact-results{max-height:30vh;overflow:auto}#contact-detail{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.7;margin-top:16px}
+#contact-search,#email-form input{width:100%;padding:12px;background:#07100e;color:#eef4e9;border:1px solid #385346;border-radius:8px}

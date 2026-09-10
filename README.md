@@ -1,33 +1,63 @@
-# GNX Vault presentation layer
+# GNX Vault · WhatsApp login + Lumen
 
-Landing interactiva para presentar el vault de GNX Labs: onboarding inteligente, conexiones, contexto persistente y colaboración por voz con un agente.
+MVP local de GNX Vault. El usuario entra escaneando un QR real de WhatsApp,
+abre una sesión aislada por navegador y opera Lumen con voz o con los paneles.
 
-## Desarrollo
+## Ejecutar
 
-Carga el `.env` privado del repositorio principal y abre `http://localhost:4175`:
+El servidor carga primero `.env.local` y después `.env`:
+
+```env
+OPENAI_BASE_URL=http://127.0.0.1:31415/v1
+OPENAI_API_KEY=...
+OPENAI_MODEL=auto
+```
 
 ```powershell
-$env:VAULT_ENV_FILE='C:\Users\mayas\orca\vault-agentes\.env'
+npm install
 npm run dev
 ```
 
-El servidor recarga el navegador al cambiar HTML, CSS o JavaScript. `GET /api/health` indica si Terra está configurada sin revelar la llave.
+Abrir `http://localhost:4175`. La llave permanece en el servidor y los archivos
+de entorno están excluidos de Git. `GET /api/health` comprueba que el runtime
+responda; no considera la IA online solo porque exista una llave.
 
-## Estructura
+## Flujo implementado
 
-```text
-src/domain/       Modelo y catálogo de capacidades
-src/application/  Casos de uso y estado de la experiencia
-src/adapters/     API mock y capacidades del navegador
-src/ui/           Escenas Three.js
-src/main.js       Composición e interacciones de la página
-server.js         Servidor dev, live reload y frontera OpenAI
+- `Entrar con WhatsApp` genera un QR real mediante Baileys dentro del contenedor
+  `gnx-hermes` en WSL.
+- La app solo abre después de que WhatsApp confirme la conexión.
+- Cada cookie HttpOnly firmada apunta a credenciales, contactos e historial
+  separados en `/opt/data/vault-clients/<id>/`.
+- `Ctrl+K` busca contactos y muestra hasta seis mensajes recientes del contacto.
+- Lumen reconoce órdenes como `mándale a Ana el mensaje ...`; siempre prepara
+  el contenido y exige confirmación explícita antes de enviarlo desde la misma
+  sesión de WhatsApp vinculada.
+- `Cerrar sesión` intenta desvincular WhatsApp, borra la persistencia local,
+  revoca la cookie y elimina el directorio de esa identidad.
+- Email guarda temporalmente una dirección y declara la verificación pendiente;
+  no simula que se envió una confirmación.
+- El micrófono usa `MediaRecorder`, envía audio real a
+  `/v1/audio/transcriptions` y utiliza SpeechRecognition del navegador como
+  respaldo cuando está disponible. No genera transcripciones ficticias.
+- Lumen usa `/v1/chat/completions`; si el runtime falla, la UI lo reporta y no
+  inventa una respuesta local.
+
+El historial visible depende de lo que WhatsApp sincronice al dispositivo
+vinculado y se limita a texto/captions en este MVP. Es una arquitectura local:
+para producción faltan un servicio administrado de sesiones, cifrado por tenant,
+control de acceso remoto y políticas de retención.
+
+## Validación
+
+```powershell
+npm run check
+npm run test:ui
+npm run test:qr
 ```
 
-El frontend nunca recibe la API key. `server.js` usa Responses API con `gpt-5.6-terra`, razonamiento `medium`, historial corto y `store: false`. Si la llave no está disponible, Lumen conserva el fallback local de la demo.
+`test:ui` usa contratos controlados y no envía mensajes. `test:qr` arranca una
+sesión real y verifica que aparezca un QR, pero tampoco lo escanea ni envía nada.
 
-## Entrada al vault
-
-`Entrar al vault` simula identidad OAuth, consentimiento y callback antes de abrir un workspace inmersivo independiente de la landing. La experiencia permite conversar con Lumen y probar conexiones adicionales; solo se guardan IDs de demo, nunca tokens.
-
-La sesión se minimiza como una burbuja arrastrable. Active Thread funciona con flujos guiados y respuestas rápidas, sin teclado. El control de Lumen ofrece `Mantener y enviar` y `Escucha continua`; la transcripción del navegador se envía al servidor como contexto para Terra y conserva fallback local si la API no está disponible.
+Referencias: [Hermes WhatsApp](https://hermes-agent.nousresearch.com/docs/user-guide/messaging/whatsapp)
+y [Baileys](https://github.com/WhiskeySockets/Baileys/blob/master/README.md).

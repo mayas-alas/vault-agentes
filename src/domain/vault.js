@@ -1,5 +1,5 @@
 export const integrations=[
-{id:'whatsapp',name:'WhatsApp',mark:'WA',color:'#9af0b6',copy:'Conversaciones, respuestas y flujos definidos vía Hermes Agent.',mode:'qr',action:'Vincular con QR'},
+{id:'email',name:'Email',mark:'@',color:'#9af0b6',copy:'Añade tu correo de contacto. Verificación por email próximamente.',mode:'email',action:'Linkear email'},
 {id:'calendar',name:'Google Calendar',mark:'GC',color:'#90c9ff',copy:'Disponibilidad, eventos y acuerdos que sí llegan a la agenda.',mode:'oauth',action:'Autorizar calendario'},
 {id:'github',name:'GitHub',mark:'GH',color:'#d5d9d7',copy:'Repositorios, issues y señales reales del trabajo en curso.',mode:'oauth',action:'Conectar GitHub'},
 {id:'tailscale',name:'Tailscale',mark:'TS',color:'#c0aeff',copy:'Acceso privado a servicios y agentes que viven en tu red.',mode:'network',action:'Vincular tailnet'},
