@@ -24,8 +24,8 @@ export class PulseScene{
   burst(){this.burstEnergy=1}
   resize(){const box=this.canvas.getBoundingClientRect();if(!box.width||!box.height)return;this.renderer.setSize(box.width,box.height,false);this.camera.aspect=box.width/box.height;this.camera.updateProjectionMatrix()}
   animate(){
-    if(this.canvas.offsetParent===null){requestAnimationFrame(()=>this.animate());return}
-    const t=this.clock.getElapsedTime(),motion=this.reduced?0:1,pulse=1+Math.sin(t*2.25)*.025*motion+this.energy*.1+this.burstEnergy*.2;
+    if(document.hidden||this.canvas.offsetParent===null){requestAnimationFrame(()=>this.animate());return}
+    const t=this.reduced?0:this.clock.getElapsedTime(),motion=this.reduced?0:1,pulse=1+Math.sin(t*2.25)*.025*motion+this.energy*.1+this.burstEnergy*.2;
     this.burstEnergy*=.94;this.group.rotation.y+=(this.pointer.x*.22+this.scroll*.55-this.group.rotation.y)*.025*motion;this.group.rotation.x+=(-this.pointer.y*.14+Math.sin(t*.12)*.17-this.group.rotation.x)*.025*motion;
     this.group.position.y+=(this.scroll*-.5-this.group.position.y)*.025;this.camera.position.x+=(this.pointer.x*.25-this.camera.position.x)*.025;this.camera.position.y+=(-this.pointer.y*.16-this.camera.position.y)*.025;
     this.points.rotation.z=-t*.035*motion;this.points.material.opacity=.54+this.energy*.16+this.burstEnergy*.18;this.core.scale.setScalar(pulse);this.core.rotation.x=t*.22*motion;this.core.rotation.y=t*.18*motion;
