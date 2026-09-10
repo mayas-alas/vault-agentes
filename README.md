@@ -1,4 +1,4 @@
-# Vault · Demo de negocio
+# GNX Vault · Conversaciones que se convierten en acción
 
 Demo en HTML, CSS y JavaScript con el runtime local en `http://127.0.0.1:31415/v1`.
 
@@ -10,13 +10,13 @@ La configuración privada vive en `.env.local` (ignorada por Git). Usa `.env.exa
 
 ## Recorrer
 
-1. Explora los cuatro capítulos con la navegación superior. Cada sección tiene su propio scroll.
-2. Abre el espacio, continúa con la identidad de demo y simula la vinculación de WhatsApp.
-3. Busca con Ctrl/Cmd + K o elige uno de los tres clientes.
+1. Explora el recorrido: agente → conexión → contexto → acuerdo.
+2. Pulsa **Hablar con mi agente** para entrar directamente a la vista previa local con Lumen.
+3. Busca con Ctrl/Cmd + K o elige una de las tres conversaciones.
 4. Prepara un seguimiento, un briefing o una nota de voz. Los resultados del runtime y los guiones de ejemplo están identificados.
 5. Edita, copia, descarga o guarda la propuesta como nota. Confirma un acuerdo con responsable y fecha opcional.
 
-El botón ◈ abre tres escenarios. Reiniciar solicita confirmación porque elimina las notas, borradores y acuerdos locales de la demo. Los datos están separados por cliente y se recuperan después de recargar.
+El botón ◈ abre tres casos de trabajo. Reiniciar solicita confirmación porque elimina las notas, borradores y acuerdos locales. Los datos están separados por conversación y se recuperan después de recargar.
 
 ## Audio
 
@@ -24,7 +24,7 @@ Graba hasta cinco minutos o sube WAV, WebM, OGG, MP3 o M4A (máximo 10 MB). Escu
 
 ## Límites explícitos
 
-Login, QR y conversaciones son simulados. El runtime y la transcripción usan el servicio real configurado. No se envían mensajes de WhatsApp ni se crean eventos externos. Audio grabado permanece sólo en memoria; notas confirmadas y borradores se guardan en este navegador. La calidad y disponibilidad de la generación dependen del pool del runtime.
+La vista previa usa conversaciones locales ficticias; no vincula cuentas, lee mensajes reales ni crea eventos externos. El runtime y la transcripción usan el servicio real configurado. Audio grabado permanece sólo en memoria; notas confirmadas y borradores se guardan en este navegador. La calidad y disponibilidad de la generación dependen del pool del runtime.
 
 ## Archivos activos
 
