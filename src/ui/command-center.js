@@ -8,6 +8,7 @@ let version=0,poll;
 document.addEventListener('keydown',event=>{
   const modal=document.querySelector('#modal');if(!modal||modal.hidden||!modal.classList.contains('command-center'))return;
   if(event.key==='Escape'){
+    const contextMenu=modal.querySelector('.cc-context-menu');if(contextMenu){event.preventDefault();contextMenu.remove();return;}
     event.preventDefault();event.stopImmediatePropagation();modal.hidden=true;modal.classList.remove('command-center');clearInterval(poll);version++;
     document.body.style.overflow=document.querySelector('#vault-experience')?.hidden?'':'hidden';
     document.querySelector('[data-command-center]')?.focus();

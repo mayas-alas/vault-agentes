@@ -11,7 +11,7 @@
 .command-center{padding:28px;background:rgba(3,9,7,.82);backdrop-filter:blur(16px)}
 .command-center .modal{width:min(1160px,96vw);max-width:1160px;padding:0;border:1px solid #304239;border-radius:22px;background:#101915;box-shadow:0 40px 120px #0009;overflow:hidden;max-height:94vh}
 .command-center .modal-close{top:22px;right:22px;z-index:3}
-.command-center #modal-content{display:flex;flex-direction:column;height:min(820px,90vh)}
+.command-center #modal-content{position:relative;display:flex;flex-direction:column;height:min(820px,90vh)}
 .cc-heading{display:flex;align-items:center;justify-content:space-between;padding:28px 66px 20px 28px;gap:20px}
 .cc-heading .kicker{font-size:9px;letter-spacing:.18em;color:#91b39c}
 .cc-heading h3{font-size:27px;letter-spacing:-1px;margin:8px 0;color:#eef4e9}
