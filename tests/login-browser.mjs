@@ -4,13 +4,13 @@ const browser=await chromium.launch({channel:'msedge',headless:true});
 try{
  const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage();let linked=false,sent=[],summaryCalls=0;
  const errors=[];page.on('pageerror',error=>errors.push(error.message));
- const contact={id:'test@s.whatsapp.net',name:'Ana'},campaigns=[{id:'lumen',name:'Primer contacto · Lumen',goal:'Presentar a Lumen'}],members={};
+ const contact={id:'test@s.whatsapp.net',name:'Ana'},workspaces=[{id:'lumen',name:'Primer contacto · Lumen',goal:'Presentar a Lumen'}],members={};
  const messages=[{id:'m1',chat:contact.id,name:'Ana',text:'Podemos revisar la propuesta mañana.',fromMe:false,timestamp:Date.now()}];
  await page.route('**/__dev/events',route=>route.abort());
  await page.route('**/api/health',route=>route.fulfill({json:{ok:true,ai:true,model:'fixture'}}));
  await page.route('**/api/whatsapp/client/session',route=>route.fulfill({json:linked?{status:'connected',phone:'5215550000000'}:{status:'waiting',localUser:'test'}}));
- await page.route('**/api/whatsapp/client/conversations',route=>route.fulfill({json:{contacts:[contact,{id:'other@s.whatsapp.net',name:'Beto'}],messages,campaigns,members}}));
- await page.route('**/api/whatsapp/client/context?*',route=>route.fulfill({json:{contact,membership:members[contact.id]||null,campaign:campaigns[0],messages,revision:'rev1'}}));
+ await page.route('**/api/whatsapp/client/conversations',route=>route.fulfill({json:{contacts:[contact,{id:'other@s.whatsapp.net',name:'Beto'}],messages,workspaces,members}}));
+ await page.route('**/api/whatsapp/client/context?*',route=>route.fulfill({json:{contact,membership:members[contact.id]||null,workspace:workspaces[0],messages,revision:'rev1'}}));
  await page.route('**/api/whatsapp/client/membership',async route=>{const body=route.request().postDataJSON();members[body.contactId]={...body,stage:body.stage||'selected'};await route.fulfill({json:{member:members[body.contactId]}})});
  await page.route('**/api/whatsapp/client/summarize',route=>{summaryCalls++;return route.fulfill({json:{summary:{text:'Contexto: Ana propone revisar la propuesta mañana. [m1]\nPróximo paso: acordar horario.',revision:'rev1',messageCount:1,generatedAt:new Date().toISOString()}}})});
  await page.route('**/api/whatsapp/client/draft',route=>route.fulfill({json:{text:'Hola Ana, soy Lumen. ¿Qué horario te funciona para revisar la propuesta?'}}));
@@ -21,7 +21,7 @@ try{
  linked=true;await page.waitForSelector('#vault-experience',{state:'visible',timeout:10000});
  await page.keyboard.press('Control+k');await page.locator('#contact-search').fill('ana');await page.waitForSelector('[data-contact]');await page.locator('#contact-search').press('Enter');
  await page.waitForSelector('.cc-profile');assert.equal(await page.locator('#send-message').count(),0);assert.equal(sent.length,0);
- await page.locator('#cc-campaign').selectOption('lumen');await page.locator('#cc-save-member').click();
+ await page.locator('#cc-workspace').selectOption('lumen');await page.locator('#cc-save-member').click();
  await page.waitForFunction(()=>document.querySelector('#cc-summary-text')?.textContent.includes('Ana propone'));
  assert.equal(summaryCalls,1);
  await page.locator('[data-flow="intro"]').click();await page.waitForSelector('#send-message');
@@ -29,13 +29,13 @@ try{
  await page.locator('#confirm-send').click();await page.waitForFunction(()=>document.querySelector('#send-status')?.textContent.includes('fixture-1'));
  assert.equal(sent.length,1);assert.equal(sent[0].contactId,contact.id);assert.equal(sent[0].flow,'intro');assert.ok(sent[0].requestId);
  await page.locator('[data-tab="activity"]').click();assert.match(await page.locator('.cc-timeline').textContent(),/propuesta mañana/);
- await page.screenshot({path:'tests/campaign-desktop.png'});
+ await page.screenshot({path:'tests/workspace-desktop.png'});
  await page.keyboard.press('Escape');assert.equal(await page.locator('#modal').isVisible(),false);assert.equal(await page.locator('#vault-experience').isVisible(),true);
  await page.keyboard.press('Control+k');await page.locator('#contact-search').fill('no existe');await page.waitForFunction(()=>document.querySelector('#contact-results')?.textContent.includes('No hay coincidencias'));
  await page.setViewportSize({width:390,height:844});await page.locator('#contact-search').fill('Ana');await page.locator('#contact-search').press('Enter');await page.waitForSelector('.cc-profile');
  assert.equal(await page.evaluate(()=>document.querySelector('#modal-content').scrollWidth>document.querySelector('#modal-content').clientWidth+1),false);
- await page.screenshot({path:'tests/campaign-mobile.png'});
+ await page.screenshot({path:'tests/workspace-mobile.png'});
  await page.keyboard.press('Escape');await page.locator('[data-logout]').click();await page.waitForSelector('#vault-experience',{state:'hidden'});
  assert.deepEqual(errors,[]);
- console.log('PASS: login gate, contact profile, campaign membership, grounded summary, explicit flow send, keyboard navigation, modal Escape, mobile layout and logout. No real messages sent.');
+ console.log('PASS: login gate, contact profile, workspace membership, grounded summary, explicit flow send, keyboard navigation, modal Escape, mobile layout and logout. No real messages sent.');
 }finally{await browser.close();}

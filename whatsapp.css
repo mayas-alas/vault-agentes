@@ -7,7 +7,7 @@
 #contact-results{max-height:30vh;overflow:auto}#contact-detail{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.7;margin-top:16px}
 #contact-search,#email-form input{width:100%;padding:12px;background:#07100e;color:#eef4e9;border:1px solid #385346;border-radius:8px}
 
-/* Campaign command center */
+/* Workspace command center */
 .command-center{padding:28px;background:rgba(3,9,7,.82);backdrop-filter:blur(16px)}
 .command-center .modal{width:min(1160px,96vw);max-width:1160px;padding:0;border:1px solid #304239;border-radius:22px;background:#101915;box-shadow:0 40px 120px #0009;overflow:hidden;max-height:94vh}
 .command-center .modal-close{top:22px;right:22px;z-index:3}

@@ -57,7 +57,7 @@ function parseSend(text){
   return text.match(/(?:m[aá]nda(?:le)?|env[ií]a(?:le)?)\s+(?:a\s+)?(?:mi\s+contacto\s+)?(.+?)\s+(?:el\s+)?(?:mensaje|recordatorio)(?:\s+(?:de\s+)?)?(.+)/i);
 }
 export async function whatsappVoice(text){
-  if(/campa[ñn]a|panorama|contactos seleccionados/i.test(text)){const result=await api('brief','POST',{});return result.text;}
+  if(/espacio|recorrido|panorama|contactos seleccionados/i.test(text)){const result=await api('brief','POST',{});return result.text;}
   if(/\b(?:confirma|confirmar)(?:\s+el)?(?:\s+env[ií]o)?\b/i.test(text)&&pendingSend){const result=await confirmPendingSend(),panel=document.querySelector('#vault-guided-panel');if(panel){panel.hidden=true;panel.textContent=''}return result}
   if(/\b(?:cancela|cancelar)(?:\s+el)?(?:\s+env[ií]o)?\b/i.test(text)&&pendingSend){pendingSend=null;closeModal();const panel=document.querySelector('#vault-guided-panel');if(panel){panel.hidden=true;panel.textContent=''}return 'Envío cancelado.'}
   const command=parseSend(text);
@@ -83,7 +83,7 @@ function openEmail(){
 }
 export function initClient(){
   document.querySelectorAll('[data-vault-entry]').forEach(button=>{button.innerHTML='Entrar con WhatsApp <span>↗</span>'});
-  const actions=document.querySelector('.vault-os-actions'),contacts=document.createElement('button');contacts.dataset.commandCenter='';contacts.textContent='Campañas · Ctrl+K';contacts.onclick=()=>openContacts();actions.prepend(contacts);
+  const actions=document.querySelector('.vault-os-actions'),contacts=document.createElement('button');contacts.dataset.commandCenter='';contacts.textContent='Espacios · Ctrl+K';contacts.onclick=()=>openContacts();actions.prepend(contacts);
   const logout=document.createElement('button');logout.textContent='Cerrar sesión';logout.dataset.logout='';actions.append(logout);
   logout.onclick=async()=>{logout.disabled=true;try{await api('logout','POST');for(const key of Object.keys(localStorage))if(key.startsWith('gnx-'))localStorage.removeItem(key);sessionStorage.clear();localStorage.setItem('vault-logout',String(Date.now()));location.reload()}catch(error){logout.disabled=false;logout.textContent=error.message}};
   addEventListener('storage',event=>{if(event.key==='vault-logout')location.reload()});

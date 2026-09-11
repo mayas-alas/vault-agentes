@@ -5,7 +5,7 @@ import {mkdirSync,existsSync,writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {homedir} from 'node:os';
 import QRCode from 'qrcode';
-import {loadCampaigns,seedIntroductions,contextRevision,newCampaign,askLumen} from './campaigns.js';
+import {loadWorkspaces,seedIntroductions,contextRevision,newWorkspace,askLumen} from './workspaces.js';
 const dir=join(process.env.LOCALAPPDATA||homedir(),'gnx-vault-local');mkdirSync(dir,{recursive:true});
 const keyFile=join(dir,'cookie.key');
 if(!existsSync(keyFile))writeFileSync(keyFile,randomBytes(32),{mode:0o600,flag:'wx'});
@@ -50,7 +50,7 @@ function start(client,id){
       const seq=++revision;const {event,qr,...state}=data;client.state=state;
       if(qr)QRCode.toDataURL(qr,{width:320,margin:4}).then(image=>{if(seq===revision)client.state={...state,qrDataUrl:image};}).catch(()=>{});
     }
-    if(data.event==='snapshot'){client.messages=data.messages;client.contacts=data.contacts||[];seedIntroductions(client.campaignStore,client.messages);}
+    if(data.event==='snapshot'){client.messages=data.messages;client.contacts=data.contacts||[];seedIntroductions(client.workspaceStore,client.messages);}
     if(data.event==='sendResult'){const complete=client.pending.get(data.requestId);if(complete){client.pending.delete(data.requestId);complete(data);}}
   }catch{}}});
   let workerError='';
@@ -58,51 +58,51 @@ function start(client,id){
   child.on('error',()=>{client.state={status:'error',error:'No se pudo acceder a WSL.'};});
   child.on('close',(code,signal)=>{client.worker=null;const detail=workerError.trim().split('\n').at(-1);for(const complete of client.pending.values())complete({ok:false,error:detail||'La sesión de WhatsApp se cerró.'});client.pending.clear();if(client.state.status!=='error')client.state={status:'error',error:detail||`Cliente detenido (${signal||(code??'sin código')}). Reintenta conectar.`};});
 }
-export function campaignContext(req,res){
-  const client=clients.get(identity(req,res));if(!client)return {campaigns:[],contacts:[]};
-  const state=client.campaignStore.state;
-  return {campaigns:state.campaigns,contacts:Object.entries(state.members).slice(0,30).map(([id,member])=>({id,name:client.contacts.find(c=>c.id===id)?.name||id,...member,messages:client.messages.filter(m=>m.chat===id).slice(-12).map(({id,fromMe,text,timestamp})=>({id,fromMe,text:text.slice(0,800),timestamp}))})),availableMessages:client.messages.length};
+export function workspaceContext(req,res){
+  const client=clients.get(identity(req,res));if(!client)return {workspaces:[],contacts:[]};
+  const state=client.workspaceStore.state;
+  return {workspaces:state.workspaces,contacts:Object.entries(state.members).slice(0,30).map(([id,member])=>({id,name:client.contacts.find(c=>c.id===id)?.name||id,...member,messages:client.messages.filter(m=>m.chat===id).slice(-12).map(({id,fromMe,text,timestamp})=>({id,fromMe,text:text.slice(0,800),timestamp}))})),availableMessages:client.messages.length};
 }
 export async function clientAPI(req,res,url){
   const reply=(status,data)=>{res.writeHead(status,{'content-type':'application/json','cache-control':'no-store'});res.end(JSON.stringify(data));};
   const host=req.headers.host;
   if(!/^(localhost|127\.0\.0\.1)(:\d+)?$/.test(host||'')||req.headers.origin&&req.headers.origin!==`http://${host}`)return reply(403,{error:'Local access only'});
   const id=identity(req,res);let client=clients.get(id);
-  if(!client){client={state:{status:'idle'},messages:[],contacts:[],pending:new Map(),campaignStore:loadCampaigns(dir,id),inflight:new Map()};clients.set(id,client);}
+  if(!client){client={state:{status:'idle'},messages:[],contacts:[],pending:new Map(),workspaceStore:loadWorkspaces(dir,id),inflight:new Map()};clients.set(id,client);}
   try{
-    const store=client.campaignStore;
+    const store=client.workspaceStore;
     const knownContact=contactId=>[...(client.contacts||[]),...client.messages.map(m=>({id:m.chat,name:m.name}))].find(c=>c.id===contactId);
-    const contactContext=contactId=>{const member=store.state.members[contactId]||null;return {contact:knownContact(contactId),membership:member,campaigns:store.state.campaigns.filter(c=>member?.campaignIds?.includes(c.id)),messages:client.messages.filter(m=>m.chat===contactId).slice(-50).map(({id,fromMe,text,timestamp,status})=>({id,fromMe,text,timestamp,status}))}};
-    if(url.pathname.endsWith('/campaigns')){
-      if(req.method==='GET')return reply(200,{campaigns:store.state.campaigns,members:store.state.members});
+    const contactContext=contactId=>{const member=store.state.members[contactId]||null;return {contact:knownContact(contactId),membership:member,workspaces:store.state.workspaces.filter(c=>member?.workspaceIds?.includes(c.id)),messages:client.messages.filter(m=>m.chat===contactId).slice(-50).map(({id,fromMe,text,timestamp,status})=>({id,fromMe,text,timestamp,status}))}};
+    if(url.pathname.endsWith('/workspaces')){
+      if(req.method==='GET')return reply(200,{workspaces:store.state.workspaces,members:store.state.members});
       if(req.method==='POST'){
         const payload=await readJson(req),name=String(payload.name||'').trim().slice(0,80),goal=String(payload.goal||'').trim().slice(0,1000);
-        if(!name)return reply(400,{error:'Escribe un nombre para la campaña.'});
-        const campaign=newCampaign(name,goal);store.state.campaigns.push(campaign);store.save();return reply(200,{campaign});
+        if(!name)return reply(400,{error:'Escribe un nombre para la espacio.'});
+        const workspace=newWorkspace(name,goal);store.state.workspaces.push(workspace);store.save();return reply(200,{workspace});
       }
     }
     if(url.pathname.endsWith('/membership')&&req.method==='POST'){
       const payload=await readJson(req),contactId=String(payload.contactId||'');
       if(!knownContact(contactId))return reply(403,{error:'Contacto fuera de esta sesión.'});
       if(payload.remove){delete store.state.members[contactId];delete store.state.summaries[contactId];store.state.excluded[contactId]=true;store.save();return reply(200,{ok:true});}
-      const campaignIds=[...(payload.campaignIds||[payload.campaignId]||[])].filter(id=>store.state.campaigns.some(c=>c.id===id));
-      if(!campaignIds.length)return reply(400,{error:'Selecciona al menos una campaña válida.'});
+      const workspaceIds=[...(payload.workspaceIds||[payload.workspaceId]||[])].filter(id=>store.state.workspaces.some(c=>c.id===id));
+      if(!workspaceIds.length)return reply(400,{error:'Selecciona al menos un espacio válido.'});
       const previous=store.state.members[contactId]||{};
       const stage=['selected','presented','engaged','done'].includes(payload.stage)?payload.stage:previous.stage||'selected';
-      store.state.members[contactId]={...previous,campaignIds,stage,notes:String(payload.notes??previous.notes??'').slice(0,3000),updatedAt:new Date().toISOString()};
+      store.state.members[contactId]={...previous,workspaceIds,stage,notes:String(payload.notes??previous.notes??'').slice(0,3000),updatedAt:new Date().toISOString()};
       delete store.state.excluded[contactId];
       store.save();return reply(200,{member:store.state.members[contactId]});
     }
     if(url.pathname.endsWith('/context')&&req.method==='GET'){
       const contactId=url.searchParams.get('contactId');if(!knownContact(contactId))return reply(404,{error:'Contacto no encontrado.'});
-      const context=contactContext(contactId),revision=contextRevision(context.messages,context.membership,context.campaign);
+      const context=contactContext(contactId),revision=contextRevision(context.messages,context.membership,context.workspaces);
       return reply(200,{...context,summary:store.state.summaries[contactId]||null,revision});
     }
     if(url.pathname.endsWith('/summarize')&&req.method==='POST'){
       const {contactId}=await readJson(req);if(!knownContact(contactId))return reply(404,{error:'Contacto no encontrado.'});
-      const context=contactContext(contactId);if(!context.membership?.campaignIds?.length)return reply(400,{error:'Agrega el contacto a una campaña para contextualizarlo.'});
+      const context=contactContext(contactId);if(!context.membership?.workspaceIds?.length)return reply(400,{error:'Agrega el contacto a un espacio para contextualizarlo.'});
       if(!context.messages.length)return reply(400,{error:'Aún no hay mensajes sincronizados para resumir.'});
-      const revision=contextRevision(context.messages,context.membership,context.campaign),cached=store.state.summaries[contactId];
+      const revision=contextRevision(context.messages,context.membership,context.workspaces),cached=store.state.summaries[contactId];
       if(cached?.revision===revision)return reply(200,{summary:cached});
       const summary=await askLumen('Resume en máximo 180 palabras con los apartados Contexto, Señales, Pendientes y Próximo paso. Cita fechas o IDs de los mensajes que sustentan las conclusiones. Si sólo hay una presentación enviada, dilo: no implica respuesta, interés ni aceptación.',context);
       store.state.summaries[contactId]={...summary,revision,messageCount:context.messages.length};store.save();return reply(200,{summary:store.state.summaries[contactId]});
@@ -111,13 +111,13 @@ export async function clientAPI(req,res,url){
       const {contactId,flow}=await readJson(req);if(!knownContact(contactId))return reply(404,{error:'Contacto no encontrado.'});
       const instructions={followup:'Escribe un seguimiento breve, amable y sin presión, basado en el último intercambio.',meeting:'Propón coordinar una conversación. Pregunta disponibilidad; no inventes horarios ni citas confirmadas.',reply:'Redacta una respuesta útil al último mensaje recibido. No inventes información que no tengas.'};
       if(!instructions[flow])return reply(400,{error:'Flujo no disponible.'});
-      const context=contactContext(contactId);if(!context.membership?.campaignIds?.length)return reply(400,{error:'Agrega el contacto a una campaña primero.'});
+      const context=contactContext(contactId);if(!context.membership?.workspaceIds?.length)return reply(400,{error:'Agrega el contacto a un espacio primero.'});
       const draft=await askLumen(instructions[flow]+' Devuelve sólo el mensaje de WhatsApp, máximo 700 caracteres, identificándote como Lumen. Es un borrador para revisión.',context);return reply(200,{...draft,text:draft.text.slice(0,1000)});
     }
     if(url.pathname.endsWith('/brief')&&req.method==='POST'){
-      const context=campaignContext(req,res);
-      if(!context.contacts.length)return reply(200,{text:'Todavía no hay contactos en campañas. Abre Ctrl+K, selecciona un contacto y agrégalo a una campaña.'});
-      const result=await askLumen('Da un panorama breve de las campañas y contactos incorporados. Separa presentaciones enviadas, respuestas recibidas y próximos pasos propuestos. No des por aceptada una campaña sólo porque se envió un mensaje.',context);return reply(200,result);
+      const context=workspaceContext(req,res);
+      if(!context.contacts.length)return reply(200,{text:'Todavía no hay contactos en espacios. Abre Ctrl+K, selecciona un contacto y agrégalo a un espacio.'});
+      const result=await askLumen('Da un panorama breve de las espacios y contactos incorporados. Separa presentaciones enviadas, respuestas recibidas y próximos pasos propuestos. No des por aceptada un espacio sólo porque se envió un mensaje.',context);return reply(200,result);
     }
     if(url.pathname.endsWith('/logout')&&req.method==='POST'){
       revoked.add(id);writeFileSync(revokedFile,JSON.stringify([...revoked]));
@@ -136,7 +136,7 @@ export async function clientAPI(req,res,url){
     }
     if(url.pathname.endsWith('/conversations')&&req.method==='GET'){
       if(client.state.status!=='connected')return reply(401,{error:'Vincula WhatsApp para entrar.'});
-      return reply(200,{messages:client.messages,contacts:client.contacts||[],status:client.state.status,campaigns:store.state.campaigns,members:store.state.members});
+      return reply(200,{messages:client.messages,contacts:client.contacts||[],status:client.state.status,workspaces:store.state.workspaces,members:store.state.members});
     }
     if(url.pathname.endsWith('/send')&&req.method==='POST'){
       if(!client.worker)return reply(401,{error:'Vincula WhatsApp para entrar.'});

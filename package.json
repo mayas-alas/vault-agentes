@@ -4,11 +4,11 @@
   "type": "module",
   "scripts": {
     "dev": "node server.js",
-    "check": "node --check server.js && node --check campaigns.js && node --check whatsapp-clients.js && node --check scripts/whatsapp-client.mjs && node --check src/main.js && node --check src/ui/vault-experience.js && node --check src/ui/whatsapp-client.js && node --check src/ui/command-center.js && node --check src/adapters/browser-voice.js",
+    "check": "node --check server.js && node --check workspaces.js && node --check whatsapp-clients.js && node --check scripts/whatsapp-client.mjs && node --check src/main.js && node --check src/ui/vault-experience.js && node --check src/ui/whatsapp-client.js && node --check src/ui/command-center.js && node --check src/adapters/browser-voice.js",
     "test:ui": "node tests/login-browser.mjs",
     "test:qr": "node tests/client-browser.mjs",
     "test:worker": "node tests/worker-input.mjs",
-    "test:campaigns": "node --test tests/campaigns.mjs"
+    "test:workspaces": "node --test tests/workspaces.mjs"
   },
   "dependencies": {
     "qrcode": "^1.5.4"

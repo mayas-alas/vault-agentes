@@ -3,19 +3,19 @@ import assert from 'node:assert/strict';
 import {mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {loadCampaigns,seedIntroductions,contextRevision,askLumen} from '../campaigns.js';
-test('campaigns persist, isolate identities, preserve notes and respect removal',()=>{
- const folder=mkdtempSync(join(tmpdir(),'vault-campaign-test-'));
+import {loadWorkspaces,seedIntroductions,contextRevision,askLumen} from '../workspaces.js';
+test('workspaces persist, isolate identities, preserve notes and respect removal',()=>{
+ const folder=mkdtempSync(join(tmpdir(),'vault-workspace-test-'));
  try{
-  const a=loadCampaigns(folder,'a'),b=loadCampaigns(folder,'b');
+  const a=loadWorkspaces(folder,'a'),b=loadWorkspaces(folder,'b');
   const messages=[{id:'sent1',chat:'ana',fromMe:true,text:'Hola, soy Lumen.',timestamp:Date.now()},{id:'recv1',chat:'beto',fromMe:false,text:'soy Lumen'}];
   seedIntroductions(a,messages);
   assert.equal(a.state.members.ana.stage,'presented');assert.equal(a.state.members.beto,undefined);assert.deepEqual(b.state.members,{});
   a.state.members.ana.notes='Proteger el acuerdo';a.save();seedIntroductions(a,messages);
-  assert.equal(loadCampaigns(folder,'a').state.members.ana.notes,'Proteger el acuerdo');
+  assert.equal(loadWorkspaces(folder,'a').state.members.ana.notes,'Proteger el acuerdo');
   delete a.state.members.ana;a.state.excluded.ana=true;a.save();seedIntroductions(a,messages);assert.equal(a.state.members.ana,undefined);
   assert.notEqual(contextRevision([{text:'one'}],{},{}),contextRevision([{text:'two'}],{},{}));
-  a.destroy();assert.deepEqual(loadCampaigns(folder,'a').state.members,{});
+  a.destroy();assert.deepEqual(loadWorkspaces(folder,'a').state.members,{});
  }finally{rmSync(folder,{recursive:true,force:true})}
 });
 test('Lumen uses configured runtime, passes context as data and rejects upstream failures',async()=>{
