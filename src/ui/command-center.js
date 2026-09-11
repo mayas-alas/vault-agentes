@@ -2,7 +2,7 @@ const endpoint='/api/whatsapp/client/';
 const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const norm=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 const date=value=>value?new Date(value).toLocaleString('es-MX',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'Sin actividad';
-const stages={selected:'Seleccionado',presented:'Presentado',engaged:'En conversación',done:'Completado'};
+const stages={inactive:'Inactivo',active:'Activo · saludar ahora',presented:'Presentado',engaged:'En conversación',done:'Completado'};
 const intro='Hola, soy Lumen, el agente que acompaña esta espacio. Te escribo para presentarme y apoyar con el seguimiento y la coordinación. Cuando escriba yo, me identificaré como Lumen. ¿En qué podemos ayudarte?';
 let version=0,poll;
 document.addEventListener('keydown',event=>{
@@ -78,11 +78,18 @@ export async function openCommandCenter(query=''){
     const saveMember=async()=>{
       const workspaceIds=[...detail.querySelector('#cc-workspace').selectedOptions].map(option=>option.value);
       if(!workspaceIds.length){if(member){await api('membership','POST',{contactId:contact.id,remove:true});await refresh();if(active())await select(contact);}else setStatus('Elige al menos un espacio para guardar el contacto.');return;}
-      await api('membership','POST',{contactId:contact.id,workspaceIds,stage:detail.querySelector('#cc-stage')?.value,notes:detail.querySelector('#cc-notes').value});
+      const nextStage=detail.querySelector('#cc-stage')?.value||'inactive';
+      await api('membership','POST',{contactId:contact.id,workspaceIds,stage:nextStage,notes:detail.querySelector('#cc-notes').value});
+      if(member&&nextStage==='active'&&member.stage!=='presented') await api('send','POST',{contactId:contact.id,message:intro,flow:'intro',requestId:crypto.randomUUID()});
       await refresh();if(active())await select(contact);
     };
     detail.querySelector('#cc-save-member').onclick=event=>action(event.target,saveMember);
     detail.querySelector('#cc-save-notes').onclick=event=>action(event.target,saveMember);
+    detail.querySelector('#cc-activate')?.addEventListener('click',event=>action(event.target,async()=>{
+      await api('membership','POST',{contactId:contact.id,workspaceIds:member.workspaceIds,stage:'inactive',notes:detail.querySelector('#cc-notes').value});
+      const result=await api('send','POST',{contactId:contact.id,message:intro,flow:'intro',requestId:crypto.randomUUID()});
+      setStatus(`Saludo de Lumen enviado a ${contact.name} · ${result.messageId}`);await refresh();if(active())await select(contact);
+    }));
     async function summarize(){
       const button=detail.querySelector('#cc-summary'),target=detail.querySelector('#cc-summary-text');button.disabled=true;
       try{const {summary}=await api('summarize','POST',{contactId:contact.id});if(active()){target.textContent=summary.text;detail.querySelector('#cc-summary-meta').textContent=`${date(summary.generatedAt)} · ${summary.messageCount} mensajes`;}}

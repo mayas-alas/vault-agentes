@@ -88,7 +88,7 @@ export async function clientAPI(req,res,url){
       const workspaceIds=[...(payload.workspaceIds||[payload.workspaceId]||[])].filter(id=>store.state.workspaces.some(c=>c.id===id));
       if(!workspaceIds.length)return reply(400,{error:'Selecciona al menos un espacio válido.'});
       const previous=store.state.members[contactId]||{};
-      const stage=['selected','presented','engaged','done'].includes(payload.stage)?payload.stage:previous.stage||'selected';
+      const stage=['inactive','active','presented','engaged','done'].includes(payload.stage)?payload.stage:previous.stage||'inactive';
       store.state.members[contactId]={...previous,workspaceIds,stage,notes:String(payload.notes??previous.notes??'').slice(0,3000),updatedAt:new Date().toISOString()};
       delete store.state.excluded[contactId];
       store.save();return reply(200,{member:store.state.members[contactId]});
