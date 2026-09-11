@@ -5,6 +5,7 @@ import {mkdirSync,existsSync,writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {homedir} from 'node:os';
 import QRCode from 'qrcode';
+import {loadCampaigns,seedIntroductions,contextRevision,newCampaign,askLumen} from './campaigns.js';
 const dir=join(process.env.LOCALAPPDATA||homedir(),'gnx-vault-local');mkdirSync(dir,{recursive:true});
 const keyFile=join(dir,'cookie.key');
 if(!existsSync(keyFile))writeFileSync(keyFile,randomBytes(32),{mode:0o600,flag:'wx'});
@@ -49,7 +50,7 @@ function start(client,id){
       const seq=++revision;const {event,qr,...state}=data;client.state=state;
       if(qr)QRCode.toDataURL(qr,{width:320,margin:4}).then(image=>{if(seq===revision)client.state={...state,qrDataUrl:image};}).catch(()=>{});
     }
-    if(data.event==='snapshot'){client.messages=data.messages;client.contacts=data.contacts||[];}
+    if(data.event==='snapshot'){client.messages=data.messages;client.contacts=data.contacts||[];seedIntroductions(client.campaignStore,client.messages);}
     if(data.event==='sendResult'){const complete=client.pending.get(data.requestId);if(complete){client.pending.delete(data.requestId);complete(data);}}
   }catch{}}});
   let workerError='';
@@ -57,15 +58,69 @@ function start(client,id){
   child.on('error',()=>{client.state={status:'error',error:'No se pudo acceder a WSL.'};});
   child.on('close',(code,signal)=>{client.worker=null;const detail=workerError.trim().split('\n').at(-1);for(const complete of client.pending.values())complete({ok:false,error:detail||'La sesión de WhatsApp se cerró.'});client.pending.clear();if(client.state.status!=='error')client.state={status:'error',error:detail||`Cliente detenido (${signal||(code??'sin código')}). Reintenta conectar.`};});
 }
+export function campaignContext(req,res){
+  const client=clients.get(identity(req,res));if(!client)return {campaigns:[],contacts:[]};
+  const state=client.campaignStore.state;
+  return {campaigns:state.campaigns,contacts:Object.entries(state.members).slice(0,30).map(([id,member])=>({id,name:client.contacts.find(c=>c.id===id)?.name||id,...member,messages:client.messages.filter(m=>m.chat===id).slice(-12).map(({id,fromMe,text,timestamp})=>({id,fromMe,text:text.slice(0,800),timestamp}))})),availableMessages:client.messages.length};
+}
 export async function clientAPI(req,res,url){
   const reply=(status,data)=>{res.writeHead(status,{'content-type':'application/json','cache-control':'no-store'});res.end(JSON.stringify(data));};
   const host=req.headers.host;
   if(!/^(localhost|127\.0\.0\.1)(:\d+)?$/.test(host||'')||req.headers.origin&&req.headers.origin!==`http://${host}`)return reply(403,{error:'Local access only'});
   const id=identity(req,res);let client=clients.get(id);
-  if(!client){client={state:{status:'idle'},messages:[],contacts:[],pending:new Map()};clients.set(id,client);}
+  if(!client){client={state:{status:'idle'},messages:[],contacts:[],pending:new Map(),campaignStore:loadCampaigns(dir,id),inflight:new Map()};clients.set(id,client);}
   try{
+    const store=client.campaignStore;
+    const knownContact=contactId=>[...(client.contacts||[]),...client.messages.map(m=>({id:m.chat,name:m.name}))].find(c=>c.id===contactId);
+    const contactContext=contactId=>({contact:knownContact(contactId),membership:store.state.members[contactId]||null,campaign:store.state.campaigns.find(c=>c.id===store.state.members[contactId]?.campaignId)||null,messages:client.messages.filter(m=>m.chat===contactId).slice(-50).map(({id,fromMe,text,timestamp,status})=>({id,fromMe,text,timestamp,status}))});
+    if(url.pathname.endsWith('/campaigns')){
+      if(req.method==='GET')return reply(200,{campaigns:store.state.campaigns,members:store.state.members});
+      if(req.method==='POST'){
+        const payload=await readJson(req),name=String(payload.name||'').trim().slice(0,80),goal=String(payload.goal||'').trim().slice(0,1000);
+        if(!name)return reply(400,{error:'Escribe un nombre para la campaña.'});
+        const campaign=newCampaign(name,goal);store.state.campaigns.push(campaign);store.save();return reply(200,{campaign});
+      }
+    }
+    if(url.pathname.endsWith('/membership')&&req.method==='POST'){
+      const payload=await readJson(req),contactId=String(payload.contactId||'');
+      if(!knownContact(contactId))return reply(403,{error:'Contacto fuera de esta sesión.'});
+      if(payload.remove){delete store.state.members[contactId];delete store.state.summaries[contactId];store.state.excluded[contactId]=true;store.save();return reply(200,{ok:true});}
+      if(!store.state.campaigns.some(c=>c.id===payload.campaignId))return reply(400,{error:'Selecciona una campaña válida.'});
+      const previous=store.state.members[contactId]||{};
+      const stage=['selected','presented','engaged','done'].includes(payload.stage)?payload.stage:previous.stage||'selected';
+      store.state.members[contactId]={...previous,campaignId:payload.campaignId,stage,notes:String(payload.notes??previous.notes??'').slice(0,3000),updatedAt:new Date().toISOString()};
+      delete store.state.excluded[contactId];
+      store.save();return reply(200,{member:store.state.members[contactId]});
+    }
+    if(url.pathname.endsWith('/context')&&req.method==='GET'){
+      const contactId=url.searchParams.get('contactId');if(!knownContact(contactId))return reply(404,{error:'Contacto no encontrado.'});
+      const context=contactContext(contactId),revision=contextRevision(context.messages,context.membership,context.campaign);
+      return reply(200,{...context,summary:store.state.summaries[contactId]||null,revision});
+    }
+    if(url.pathname.endsWith('/summarize')&&req.method==='POST'){
+      const {contactId}=await readJson(req);if(!knownContact(contactId))return reply(404,{error:'Contacto no encontrado.'});
+      const context=contactContext(contactId);if(!context.membership)return reply(400,{error:'Agrega el contacto a una campaña para contextualizarlo.'});
+      if(!context.messages.length)return reply(400,{error:'Aún no hay mensajes sincronizados para resumir.'});
+      const revision=contextRevision(context.messages,context.membership,context.campaign),cached=store.state.summaries[contactId];
+      if(cached?.revision===revision)return reply(200,{summary:cached});
+      const summary=await askLumen('Resume en máximo 180 palabras con los apartados Contexto, Señales, Pendientes y Próximo paso. Cita fechas o IDs de los mensajes que sustentan las conclusiones. Si sólo hay una presentación enviada, dilo: no implica respuesta, interés ni aceptación.',context);
+      store.state.summaries[contactId]={...summary,revision,messageCount:context.messages.length};store.save();return reply(200,{summary:store.state.summaries[contactId]});
+    }
+    if(url.pathname.endsWith('/draft')&&req.method==='POST'){
+      const {contactId,flow}=await readJson(req);if(!knownContact(contactId))return reply(404,{error:'Contacto no encontrado.'});
+      const instructions={followup:'Escribe un seguimiento breve, amable y sin presión, basado en el último intercambio.',meeting:'Propón coordinar una conversación. Pregunta disponibilidad; no inventes horarios ni citas confirmadas.',reply:'Redacta una respuesta útil al último mensaje recibido. No inventes información que no tengas.'};
+      if(!instructions[flow])return reply(400,{error:'Flujo no disponible.'});
+      const context=contactContext(contactId);if(!context.membership)return reply(400,{error:'Agrega el contacto a una campaña primero.'});
+      const draft=await askLumen(instructions[flow]+' Devuelve sólo el mensaje de WhatsApp, máximo 700 caracteres, identificándote como Lumen. Es un borrador para revisión.',context);return reply(200,{...draft,text:draft.text.slice(0,1000)});
+    }
+    if(url.pathname.endsWith('/brief')&&req.method==='POST'){
+      const context=campaignContext(req,res);
+      if(!context.contacts.length)return reply(200,{text:'Todavía no hay contactos en campañas. Abre Ctrl+K, selecciona un contacto y agrégalo a una campaña.'});
+      const result=await askLumen('Da un panorama breve de las campañas y contactos incorporados. Separa presentaciones enviadas, respuestas recibidas y próximos pasos propuestos. No des por aceptada una campaña sólo porque se envió un mensaje.',context);return reply(200,result);
+    }
     if(url.pathname.endsWith('/logout')&&req.method==='POST'){
       revoked.add(id);writeFileSync(revokedFile,JSON.stringify([...revoked]));
+      store.destroy();
       client.worker?.stdin.end('logout\n');clients.delete(id);
       res.setHeader('Set-Cookie','vault_client=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');
       return reply(200,{ok:true});
@@ -80,7 +135,7 @@ export async function clientAPI(req,res,url){
     }
     if(url.pathname.endsWith('/conversations')&&req.method==='GET'){
       if(client.state.status!=='connected')return reply(401,{error:'Vincula WhatsApp para entrar.'});
-      return reply(200,{messages:client.messages.slice(-100),contacts:client.contacts||[],status:client.state.status});
+      return reply(200,{messages:client.messages,contacts:client.contacts||[],status:client.state.status,campaigns:store.state.campaigns,members:store.state.members});
     }
     if(url.pathname.endsWith('/send')&&req.method==='POST'){
       if(!client.worker)return reply(401,{error:'Vincula WhatsApp para entrar.'});
@@ -89,9 +144,27 @@ export async function clientAPI(req,res,url){
       const known=new Set([...(client.contacts||[]).map(c=>c.id),...(client.messages||[]).map(m=>m.chat)]);
       if(!known.has(contactId))return reply(403,{error:'El contacto no pertenece a esta sesión.'});
       if(!message||message.length>1000)return reply(400,{error:'El mensaje debe tener entre 1 y 1000 caracteres.'});
-      const result=await sendThroughClient(client,{chatId:contactId,message});
+      const sendKey=String(payload.requestId||randomBytes(12).toString('hex'));
+      if(!/^[a-zA-Z0-9-]{12,80}$/.test(sendKey))return reply(400,{error:'Identificador de envío inválido.'});
+      const fingerprint=createHash('sha256').update(contactId+'\n'+message).digest('hex');
+      const previous=store.state.sends[sendKey];
+      if(previous&&previous.fingerprint!==fingerprint)return reply(409,{error:'El identificador ya corresponde a otro mensaje.'});
+      if(previous?.result)return reply(200,previous.result);
+      if(previous&&!client.inflight.has(sendKey))return reply(409,{error:'Este envío quedó sin confirmación. Revisa WhatsApp antes de iniciar otro envío.'});
+      if(!client.inflight.has(sendKey)){
+        store.state.sends[sendKey]={fingerprint,startedAt:new Date().toISOString()};store.save();
+        const sending=sendThroughClient(client,{chatId:contactId,message}).then(result=>{
+          if(!result.messageId)throw Error('WhatsApp no confirmó el mensaje.');
+          const response={ok:true,messageId:result.messageId,recipient:result.chatId,sentAt:new Date().toISOString()};
+          store.state.sends[sendKey].result=response;
+          if(payload.flow==='intro'&&store.state.members[contactId])Object.assign(store.state.members[contactId],{stage:'presented',introducedAt:response.sentAt,messageId:response.messageId});
+          store.save();return response;
+        }).finally(()=>client.inflight.delete(sendKey));
+        client.inflight.set(sendKey,sending);
+      }
+      const result=await client.inflight.get(sendKey);
       if(!result.messageId)throw Error('WhatsApp no confirmó el mensaje.');
-      return reply(200,{ok:true,messageId:result.messageId,recipient:result.chatId,sentAt:new Date().toISOString()});
+      return reply(200,result);
     }
     return reply(404,{error:'Not found'});
   }catch(error){return reply(503,{error:error.message});}

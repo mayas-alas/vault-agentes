@@ -1,3 +1,4 @@
+import {openCommandCenter} from './command-center.js';
 const base='/api/whatsapp/client/';
 let generation=0,pendingSend=null;
 const normalize=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
@@ -10,7 +11,7 @@ async function api(path,method='GET',payload){
 const closeModal=()=>{const modal=document.querySelector('#modal');modal.hidden=true;document.body.style.overflow=''};
 export async function openClient(){
   const run=++generation,modal=document.querySelector('#modal'),content=document.querySelector('#modal-content');
-  modal.hidden=false;document.body.style.overflow='hidden';
+  modal.hidden=false;modal.classList.remove('command-center');document.body.style.overflow='hidden';
   content.innerHTML='<div class="modal-brand"><span class="service-icon" style="--service:#9af0b6">WA</span><span class="kicker">IDENTIDAD SEGURA</span></div><h3 id="modal-title">Entra con WhatsApp.</h3><p class="modal-copy">Escanea el código desde Dispositivos vinculados. Tu número identifica esta sesión local del vault.</p><div class="whatsapp-qr"><img hidden alt="Código QR para iniciar sesión"><span>Preparando QR…</span></div><p role="status" id="client-status" class="modal-copy">Conectando con Hermes…</p><button class="button ghost modal-action" id="client-retry">Generar otro QR</button>';
   const status=content.querySelector('#client-status'),img=content.querySelector('img'),hint=content.querySelector('.whatsapp-qr span');
   content.querySelector('#client-retry').onclick=async()=>{await api('new','POST');openClient()};
@@ -34,18 +35,7 @@ async function directory(){
   return {...data,contacts:[...contacts.values()]};
 }
 const escapeHTML=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-export async function openContacts(query=''){
-  const modal=document.querySelector('#modal'),content=document.querySelector('#modal-content');modal.hidden=false;document.body.style.overflow='hidden';
-  content.innerHTML='<div class="modal-brand"><span class="kicker">CTRL + K</span></div><h3 id="modal-title">Contactos.</h3><input id="contact-search" placeholder="Busca por nombre o número…" aria-label="Buscar contacto"><div id="contact-results"></div><div id="contact-detail"></div>';
-  const search=content.querySelector('input'),results=content.querySelector('#contact-results'),detail=content.querySelector('#contact-detail');search.value=query;search.focus();
-  try{
-    const {contacts}=await directory();
-    const render=()=>{results.textContent='';detail.textContent='';const needle=normalize(search.value),found=contacts.filter(contact=>normalize(contact.name+' '+contact.id).includes(needle)).slice(0,40);
-      if(!found.length)results.textContent='No encontré contactos sincronizados.';
-      for(const contact of found){const button=document.createElement('button');button.className='contact-result';button.innerHTML=`<span>${escapeHTML(contact.name||'Sin nombre')}</span><small>${escapeHTML(contact.id.split('@')[0])}</small>`;button.onclick=()=>showSendConfirmation(contact,'');results.append(button)}};
-    search.oninput=render;render();
-  }catch(error){results.textContent=error.message;setTimeout(openClient,700)}
-}
+export async function openContacts(query=''){return openCommandCenter(query)}
 function showSendConfirmation(contact,message){
   pendingSend={contact,message};const experience=document.querySelector('#vault-experience'),panel=document.querySelector('#vault-guided-panel');
   if(experience&&!experience.hidden&&panel){closeModal();panel.hidden=false;panel.innerHTML=`<div class="vault-quiz-top"><span>CONFIRMAR WHATSAPP</span><button id="cancel-send" aria-label="Cancelar">×</button></div><strong>Mensaje para ${escapeHTML(contact.name)}</strong><textarea id="send-message" rows="3" placeholder="Escribe el mensaje…">${escapeHTML(message)}</textarea><div class="send-actions"><button id="confirm-send">Confirmar envío</button><button id="cancel-send-button">Cancelar</button></div><small id="send-status" role="status">Puedes editarlo o decir “confirmar envío”.</small>`;wireSendConfirmation(panel,()=>{panel.hidden=true;panel.textContent=''});return;
@@ -67,6 +57,7 @@ function parseSend(text){
   return text.match(/(?:m[aá]nda(?:le)?|env[ií]a(?:le)?)\s+(?:a\s+)?(?:mi\s+contacto\s+)?(.+?)\s+(?:el\s+)?(?:mensaje|recordatorio)(?:\s+(?:de\s+)?)?(.+)/i);
 }
 export async function whatsappVoice(text){
+  if(/campa[ñn]a|panorama|contactos seleccionados/i.test(text)){const result=await api('brief','POST',{});return result.text;}
   if(/\b(?:confirma|confirmar)(?:\s+el)?(?:\s+env[ií]o)?\b/i.test(text)&&pendingSend){const result=await confirmPendingSend(),panel=document.querySelector('#vault-guided-panel');if(panel){panel.hidden=true;panel.textContent=''}return result}
   if(/\b(?:cancela|cancelar)(?:\s+el)?(?:\s+env[ií]o)?\b/i.test(text)&&pendingSend){pendingSend=null;closeModal();const panel=document.querySelector('#vault-guided-panel');if(panel){panel.hidden=true;panel.textContent=''}return 'Envío cancelado.'}
   const command=parseSend(text);
@@ -92,11 +83,11 @@ function openEmail(){
 }
 export function initClient(){
   document.querySelectorAll('[data-vault-entry]').forEach(button=>{button.innerHTML='Entrar con WhatsApp <span>↗</span>'});
-  const actions=document.querySelector('.vault-os-actions'),contacts=document.createElement('button');contacts.textContent='Contactos · Ctrl+K';contacts.onclick=()=>openContacts();actions.prepend(contacts);
+  const actions=document.querySelector('.vault-os-actions'),contacts=document.createElement('button');contacts.dataset.commandCenter='';contacts.textContent='Campañas · Ctrl+K';contacts.onclick=()=>openContacts();actions.prepend(contacts);
   const logout=document.createElement('button');logout.textContent='Cerrar sesión';logout.dataset.logout='';actions.append(logout);
   logout.onclick=async()=>{logout.disabled=true;try{await api('logout','POST');for(const key of Object.keys(localStorage))if(key.startsWith('gnx-'))localStorage.removeItem(key);sessionStorage.clear();localStorage.setItem('vault-logout',String(Date.now()));location.reload()}catch(error){logout.disabled=false;logout.textContent=error.message}};
   addEventListener('storage',event=>{if(event.key==='vault-logout')location.reload()});
   document.addEventListener('keydown',event=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){event.preventDefault();openContacts()}});
   document.addEventListener('click',event=>{if(event.target.closest('[data-connect="email"], [data-vault-provider="email"]')){event.stopImmediatePropagation();openEmail()}},true);
-  setTimeout(async()=>{try{const state=await api('session','POST');if(state.status==='connected')document.dispatchEvent(new CustomEvent('vault-authenticated',{detail:{phone:state.phone}}))}catch{}},100);
+  setTimeout(async()=>{try{let state=await api('session','POST');for(let i=0;i<30&&['starting','connecting'].includes(state.status);i++){await new Promise(resolve=>setTimeout(resolve,1000));state=await api('session')}if(state.status==='connected'&&document.querySelector('#vault-experience').hidden)document.dispatchEvent(new CustomEvent('vault-authenticated',{detail:{phone:state.phone}}))}catch{}},100);
 }
