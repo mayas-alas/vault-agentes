@@ -45,7 +45,7 @@ async function connect(){
   try{version=(await fetchLatestBaileysVersion()).version;}catch{}
   sock=makeWASocket({auth:state,...(version?{version}:{}),logger:pino({level:'silent'}),browser:['Hermes Agent','Chrome','120.0'],syncFullHistory:false,markOnlineOnConnect:false,getMessage:async()=>({conversation:''})});
   sock.ev.on('creds.update',saveCreds);
-  const indexContacts=items=>{for(const c of items||[]){const canonical=c.id||c.lid;if(!canonical)continue;const name=c.name||c.notify||c.verifiedName||phone(canonical);contacts[canonical]=name;if(c.id)aliases[c.id]=canonical;if(c.lid)aliases[c.lid]=canonical;}save('contacts.json',contacts);save('aliases.json',aliases);};
+  const indexContacts=items=>{for(const c of items||[]){const canonical=c.id||c.lid;if(!canonical)continue;const name=c.name||c.notify||c.verifiedName||phone(canonical);contacts[canonical]=name;if(c.id)aliases[c.id]=canonical;if(c.lid)aliases[c.lid]=canonical;}for(const message of messages){const canonical=chatId(message.sourceChat||message.chat);if(canonical!==message.chat){message.sourceChat=message.sourceChat||message.chat;message.chat=canonical;message.name=contacts[canonical]||message.name;}}save('contacts.json',contacts);save('aliases.json',aliases);save('recent.json',messages);};
   sock.ev.on('contacts.upsert',items=>indexContacts(items));
   sock.ev.on('messaging-history.set',data=>{indexContacts(data.contacts);capture(data.messages);});
   sock.ev.on('messages.upsert',data=>{capture(data.messages);});
