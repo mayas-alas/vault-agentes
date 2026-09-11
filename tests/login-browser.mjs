@@ -13,16 +13,15 @@ try{
  await page.waitForSelector('#client-status');assert.equal(await page.locator('#vault-experience').isVisible(),false);
  linked=true;await page.waitForSelector('#vault-experience',{state:'visible',timeout:10000});
  await page.keyboard.press('Control+k');await page.locator('#contact-search').fill('Ana');await page.locator('#contact-results button').click();
- assert.match(await page.locator('#contact-detail').textContent(),/Reunión mañana/);
- await page.getByRole('button',{name:'Preparar mensaje'}).click();await page.locator('#send-message').fill('Recuerda la reunión de mañana');await page.locator('#confirm-send').click();
- await page.waitForFunction(()=>document.querySelector('#send-status')?.textContent.includes('Mensaje enviado'));
- assert.deepEqual(sent,{contactId:'test@s.whatsapp.net',message:'Recuerda la reunión de mañana'});
- await page.locator('[data-logout]').click();await page.waitForLoadState();
- assert.equal(await page.locator('#vault-experience').isVisible(),false);
+ await page.waitForSelector('#vault-guided-panel:not([hidden])');assert.match(await page.locator('#vault-guided-panel').textContent(),/Mensaje para Ana/);
+ await page.locator('#send-message').fill('Hola Ana, soy Lumen.');await page.locator('#send-message').press('Control+Enter');
+ await page.waitForFunction(()=>document.querySelector('#send-status')?.textContent.includes('WhatsApp aceptó'));
+ assert.equal(sent.contactId,'test@s.whatsapp.net');assert.equal(sent.message,'Hola Ana, soy Lumen.');
+ await page.locator('[data-logout]').click();await page.waitForSelector('#vault-experience',{state:'hidden'});
  const first=await context.request.get('http://localhost:4175/api/whatsapp/client/session');const before=(await first.json()).localUser;
  const cookies=await context.cookies();
  await context.request.post('http://localhost:4175/api/whatsapp/client/logout');
  const replay=await browser.newContext();await replay.addCookies(cookies);
  const after=await (await replay.request.get('http://localhost:4175/api/whatsapp/client/session')).json();assert.notEqual(after.localUser,before);
- console.log('PASS: QR gates vault, Ctrl+K shows history, send requires confirmation, logout clears view, and cookie replay is revoked. WhatsApp UI uses controlled fixtures.');
+ console.log('PASS: QR gates vault, Ctrl+K opens a confirmed message composer, logout clears view, and cookie replay is revoked. WhatsApp UI uses controlled fixtures.');
 }finally{await browser.close();}

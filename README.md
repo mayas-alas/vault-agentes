@@ -29,10 +29,11 @@ responda; no considera la IA online solo porque exista una llave.
 - La app solo abre después de que WhatsApp confirme la conexión.
 - Cada cookie HttpOnly firmada apunta a credenciales, contactos e historial
   separados en `/opt/data/vault-clients/<id>/`.
-- `Ctrl+K` busca contactos y muestra hasta seis mensajes recientes del contacto.
+- `Ctrl+K` busca contactos, muestra hasta seis mensajes recientes y prepara la presentación editable de Lumen.
 - Lumen reconoce órdenes como `mándale a Ana el mensaje ...`; siempre prepara
   el contenido y exige confirmación explícita antes de enviarlo desde la misma
-  sesión de WhatsApp vinculada.
+  sesión de WhatsApp vinculada. El bridge conserva el identificador exacto
+  sincronizado por WhatsApp y exige un ID real de mensaje.
 - `Cerrar sesión` intenta desvincular WhatsApp, borra la persistencia local,
   revoca la cookie y elimina el directorio de esa identidad.
 - Email guarda temporalmente una dirección y declara la verificación pendiente;

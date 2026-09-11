@@ -1,7 +1,7 @@
 // Executed inside Hermes. Each local browser gets a separate account directory.
 import {createRequire} from 'node:module';
 import {pathToFileURL} from 'node:url';
-import {mkdirSync,readFileSync,writeFileSync,renameSync,existsSync,rmSync} from 'node:fs';
+import {mkdirSync,readFileSync,writeFileSync,renameSync,existsSync,rmSync,readdirSync} from 'node:fs';
 import {createInterface} from 'node:readline';
 const require=createRequire('/opt/data/scripts/whatsapp-bridge/package.json');
 const {makeWASocket,useMultiFileAuthState,fetchLatestBaileysVersion,DisconnectReason,Browsers}=await import(pathToFileURL(require.resolve('@whiskeysockets/baileys')).href);
@@ -11,9 +11,17 @@ if(!/^[a-f0-9]{64}$/.test(id))throw Error('Invalid session');
 process.umask(0o077);
 const dir='/opt/data/vault-clients/'+id;
 mkdirSync(dir,{recursive:true,mode:0o700});
+for(const entry of readdirSync('/proc')){
+  if(!/^\d+$/.test(entry)||Number(entry)===process.pid)continue;
+  try{
+    const args=readFileSync('/proc/'+entry+'/cmdline').toString().split('\0').filter(Boolean);
+    if(args[0]?.split('/').at(-1)==='node'&&args.at(-1)===id)process.kill(Number(entry),'SIGTERM');
+  }catch{}
+}
+await new Promise(resolve=>setTimeout(resolve,400));
 const read=(file,fallback)=>{try{return JSON.parse(readFileSync(dir+'/'+file,'utf8'));}catch{return fallback;}};
 const save=(file,data)=>{writeFileSync(dir+'/'+file+'.tmp',JSON.stringify(data));renameSync(dir+'/'+file+'.tmp',dir+'/'+file);};
-let messages=read('recent.json',[]),contacts=read('contacts.json',{}),sock,closed=false,retries=0;
+let messages=read('recent.json',[]),contacts=read('contacts.json',{}),sock,closed=false,retries=0,pendingOutbound=[];
 const emit=data=>console.log(JSON.stringify(data));
 const phone=jid=>String(jid||'').split('@')[0].split(':')[0];
 const snapshot=()=>emit({event:'snapshot',messages:messages.slice(-100),contacts:Object.entries(contacts).map(([id,name])=>({id,name}))});
@@ -25,6 +33,8 @@ function capture(items){
     for(let i=0;i<3;i++)content=content?.ephemeralMessage?.message||content?.viewOnceMessage?.message||content;
     const text=content?.conversation||content?.extendedTextMessage?.text||content?.imageMessage?.caption||content?.videoMessage?.caption;
     if(!text)continue;
+    const pending=pendingOutbound.find(item=>!item.done&&m.key.fromMe&&item.message===String(text)&&Date.now()-item.startedAt<75000);
+    if(pending){pending.done=true;emit({event:'sendResult',requestId:pending.requestId,ok:true,messageId:mid,chatId:jid});pendingOutbound=pendingOutbound.filter(item=>item!==pending)}
     if(!messages.some(x=>x.id===mid&&x.chat===jid))messages.push({id:mid,chat:jid,name:contacts[jid]||m.pushName||phone(jid),fromMe:Boolean(m.key.fromMe),text:String(text).slice(0,8000),timestamp:Number(m.messageTimestamp)*1000});
   }
   messages.sort((a,b)=>a.timestamp-b.timestamp);messages=messages.slice(-500);
@@ -34,7 +44,7 @@ async function connect(){
   const {state,saveCreds}=await useMultiFileAuthState(dir+'/auth');
   let version;
   try{version=(await fetchLatestBaileysVersion()).version;}catch{}
-  sock=makeWASocket({auth:state,...(version?{version}:{}),logger:pino({level:'silent'}),browser:['Hermes Agent','Chrome','120.0'],syncFullHistory:true,shouldSyncHistoryMessage:()=>true,markOnlineOnConnect:false,getMessage:async()=>undefined});
+  sock=makeWASocket({auth:state,...(version?{version}:{}),logger:pino({level:'silent'}),browser:['Hermes Agent','Chrome','120.0'],syncFullHistory:false,markOnlineOnConnect:false,getMessage:async()=>({conversation:''})});
   sock.ev.on('creds.update',saveCreds);
   sock.ev.on('contacts.upsert',items=>{for(const c of items)contacts[c.id]=c.name||c.notify||phone(c.id);save('contacts.json',contacts);});
   sock.ev.on('messaging-history.set',data=>{for(const c of data.contacts||[])contacts[c.id]=c.name||c.notify||phone(c.id);save('contacts.json',contacts);capture(data.messages);});
@@ -61,13 +71,19 @@ createInterface({input:process.stdin}).on('line',async line=>{
     if(dir==='/opt/data/vault-clients/'+id && /^[a-f0-9]{64}$/.test(id))rmSync(dir,{recursive:true,force:true});
     process.exit(0);
   }
+  let outgoing;
   try{
     const command=JSON.parse(line);
     if(command.type!=='send'||!command.requestId)return;
     if(!sock?.user)throw Error('La sesión de WhatsApp no está conectada.');
-    const sent=await sock.sendMessage(command.chatId,{text:command.message});
-    emit({event:'sendResult',requestId:command.requestId,ok:true,messageId:sent?.key?.id});
+    const chatId=command.chatId;
+    outgoing={requestId:command.requestId,message:command.message,startedAt:Date.now(),done:false};pendingOutbound.push(outgoing);
+    const sent=await sock.sendMessage(chatId,{text:command.message});
+    if(!sent?.key?.id)throw Error('WhatsApp no confirmó el mensaje.');
+    if(!outgoing.done)emit({event:'sendResult',requestId:command.requestId,ok:true,messageId:sent.key.id,chatId:sent.key.remoteJid||chatId});
+    pendingOutbound=pendingOutbound.filter(item=>item!==outgoing);
   }catch(error){
+    if(outgoing)pendingOutbound=pendingOutbound.filter(item=>item!==outgoing);
     let requestId;try{requestId=JSON.parse(line).requestId}catch{}
     emit({event:'sendResult',requestId,ok:false,error:error?.message||'WhatsApp rechazó el envío.'});
   }

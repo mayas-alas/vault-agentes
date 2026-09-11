@@ -33,21 +33,16 @@ async function directory(){
   for(const message of data.messages||[])if(!contacts.has(message.chat))contacts.set(message.chat,{id:message.chat,name:message.name});
   return {...data,contacts:[...contacts.values()]};
 }
-function renderContactDetail(contact,messages,container){
-  const recent=messages.filter(message=>message.chat===contact.id).slice(-6);
-  container.innerHTML=`<div class="contact-summary"><strong>${contact.name}</strong><small>${recent.length} mensajes recientes disponibles</small>${recent.map(message=>`<p><b>${message.fromMe?'Tú':contact.name}:</b> ${escapeHTML(message.text)}</p>`).join('')}<button class="button primary modal-action">Preparar mensaje</button></div>`;
-  container.querySelector('button').onclick=()=>showSendConfirmation(contact,'');
-}
 const escapeHTML=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 export async function openContacts(query=''){
   const modal=document.querySelector('#modal'),content=document.querySelector('#modal-content');modal.hidden=false;document.body.style.overflow='hidden';
   content.innerHTML='<div class="modal-brand"><span class="kicker">CTRL + K</span></div><h3 id="modal-title">Contactos.</h3><input id="contact-search" placeholder="Busca por nombre o número…" aria-label="Buscar contacto"><div id="contact-results"></div><div id="contact-detail"></div>';
   const search=content.querySelector('input'),results=content.querySelector('#contact-results'),detail=content.querySelector('#contact-detail');search.value=query;search.focus();
   try{
-    const {contacts,messages}=await directory();
+    const {contacts}=await directory();
     const render=()=>{results.textContent='';detail.textContent='';const needle=normalize(search.value),found=contacts.filter(contact=>normalize(contact.name+' '+contact.id).includes(needle)).slice(0,40);
       if(!found.length)results.textContent='No encontré contactos sincronizados.';
-      for(const contact of found){const button=document.createElement('button');button.className='contact-result';button.innerHTML=`<span>${escapeHTML(contact.name||'Sin nombre')}</span><small>${escapeHTML(contact.id.split('@')[0])}</small>`;button.onclick=()=>renderContactDetail(contact,messages,detail);results.append(button)}};
+      for(const contact of found){const button=document.createElement('button');button.className='contact-result';button.innerHTML=`<span>${escapeHTML(contact.name||'Sin nombre')}</span><small>${escapeHTML(contact.id.split('@')[0])}</small>`;button.onclick=()=>showSendConfirmation(contact,'');results.append(button)}};
     search.oninput=render;render();
   }catch(error){results.textContent=error.message;setTimeout(openClient,700)}
 }
@@ -59,19 +54,20 @@ function showSendConfirmation(contact,message){
   content.innerHTML=`<div class="modal-brand"><span class="kicker">CONFIRMAR ACCIÓN</span></div><h3 id="modal-title">Mensaje para ${escapeHTML(contact.name)}.</h3><p class="modal-copy">Lumen enviará este mensaje desde tu WhatsApp vinculado.</p><textarea id="send-message" rows="4" placeholder="Escribe el mensaje…">${escapeHTML(message)}</textarea><button class="button primary modal-action" id="confirm-send">Confirmar envío</button><button class="button ghost modal-action" id="cancel-send-button">Cancelar</button><p class="modal-copy" id="send-status" role="status">Revisa el contenido antes de enviarlo.</p>`;wireSendConfirmation(content,closeModal);
 }
 function wireSendConfirmation(root,onClose){
-  root.querySelector('#send-message').oninput=event=>pendingSend.message=event.target.value;
+  const textarea=root.querySelector('#send-message');textarea.focus();textarea.oninput=event=>pendingSend.message=event.target.value;
+  textarea.onkeydown=event=>{if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();root.querySelector('#confirm-send').click()}};
   root.querySelector('#confirm-send').onclick=async()=>{const status=root.querySelector('#send-status'),button=root.querySelector('#confirm-send');button.disabled=true;status.textContent='Enviando desde tu sesión…';try{const result=await confirmPendingSend();status.textContent=result;button.textContent='Enviado ✓';setTimeout(onClose,900)}catch(error){status.textContent=error.message;button.disabled=false}};
   const cancel=()=>{pendingSend=null;onClose()};root.querySelector('#cancel-send')?.addEventListener('click',cancel);root.querySelector('#cancel-send-button').onclick=cancel;
 }
 async function confirmPendingSend(){
   if(!pendingSend)throw Error('No hay un mensaje pendiente.');const {contact,message}=pendingSend;if(!message.trim())throw Error('El mensaje está vacío.');
-  const result=await api('send','POST',{contactId:contact.id,message:message.trim()});pendingSend=null;const panel=document.querySelector('#vault-guided-panel');if(panel){panel.hidden=true;panel.textContent=''}return `Mensaje enviado desde tu WhatsApp a ${contact.name}. ID ${result.messageId||'confirmado'}.`;
+  const result=await api('send','POST',{contactId:contact.id,message:message.trim()});if(!result.messageId)throw Error('WhatsApp no confirmó el mensaje. Intenta de nuevo.');pendingSend=null;return `WhatsApp aceptó el mensaje para ${contact.name}. ID ${result.messageId}.`;
 }
 function parseSend(text){
   return text.match(/(?:m[aá]nda(?:le)?|env[ií]a(?:le)?)\s+(?:a\s+)?(?:mi\s+contacto\s+)?(.+?)\s+(?:el\s+)?(?:mensaje|recordatorio)(?:\s+(?:de\s+)?)?(.+)/i);
 }
 export async function whatsappVoice(text){
-  if(/\b(?:confirma|confirmar)(?:\s+el)?(?:\s+env[ií]o)?\b/i.test(text)&&pendingSend)return confirmPendingSend();
+  if(/\b(?:confirma|confirmar)(?:\s+el)?(?:\s+env[ií]o)?\b/i.test(text)&&pendingSend){const result=await confirmPendingSend(),panel=document.querySelector('#vault-guided-panel');if(panel){panel.hidden=true;panel.textContent=''}return result}
   if(/\b(?:cancela|cancelar)(?:\s+el)?(?:\s+env[ií]o)?\b/i.test(text)&&pendingSend){pendingSend=null;closeModal();const panel=document.querySelector('#vault-guided-panel');if(panel){panel.hidden=true;panel.textContent=''}return 'Envío cancelado.'}
   const command=parseSend(text);
   if(command){

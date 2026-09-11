@@ -16,6 +16,14 @@ const sendThroughClient=(client,payload)=>new Promise((resolve,reject)=>{
   client.pending.set(requestId,result=>{clearTimeout(timer);result.ok?resolve(result):reject(Error(result.error||'WhatsApp rechazó el envío.'))});
   client.worker.stdin.write(JSON.stringify({type:'send',requestId,...payload})+'\n');
 });
+async function waitForConnection(client,timeout=20000){
+  const deadline=Date.now()+timeout;
+  while(client.worker&&client.state.status!=='error'&&Date.now()<deadline){
+    if(client.state.status==='connected')return;
+    await new Promise(resolve=>setTimeout(resolve,250));
+  }
+  throw Error(client.state.error||'WhatsApp sigue reconectando. Intenta de nuevo.');
+}
 const revokedFile=join(dir,'revoked.json');
 const revoked=new Set(existsSync(revokedFile)?JSON.parse(readFileSync(revokedFile,'utf8')):[]);
 const sign=id=>createHmac('sha256',secret).update(id).digest('hex');
@@ -32,7 +40,8 @@ function start(client,id){
   if(client.worker)return;
   if([...clients.values()].filter(c=>c.worker).length>=6)throw Error('Máximo de seis sesiones locales activas.');
   client.state={status:'starting'};
-  const child=spawn('wsl.exe',['-d','Ubuntu-24.04','-u','root','--','podman','exec','--user','10000:10000','gnx-hermes','node','--input-type=module','-e',readFileSync(new URL('./scripts/whatsapp-client.mjs',import.meta.url),'utf8'),id],{windowsHide:true});
+  // Commands are written to stdin; Podman must keep it attached to the worker.
+  const child=spawn('wsl.exe',['-d','Ubuntu-24.04','-u','root','--','podman','exec','-i','--user','10000:10000','gnx-hermes','node','--input-type=module','-e',readFileSync(new URL('./scripts/whatsapp-client.mjs',import.meta.url),'utf8'),id],{windowsHide:true});
   client.worker=child;let buffer='',revision=0;
   child.stdout.on('data',chunk=>{buffer+=chunk;let lines=buffer.split('\n');buffer=lines.pop();for(const line of lines){try{
     const data=JSON.parse(line);
@@ -43,9 +52,10 @@ function start(client,id){
     if(data.event==='snapshot'){client.messages=data.messages;client.contacts=data.contacts||[];}
     if(data.event==='sendResult'){const complete=client.pending.get(data.requestId);if(complete){client.pending.delete(data.requestId);complete(data);}}
   }catch{}}});
-  child.stderr.on('data',()=>{});
+  let workerError='';
+  child.stderr.on('data',chunk=>{workerError=(workerError+chunk).slice(-2000);});
   child.on('error',()=>{client.state={status:'error',error:'No se pudo acceder a WSL.'};});
-  child.on('close',()=>{client.worker=null;for(const complete of client.pending.values())complete({ok:false,error:'La sesión de WhatsApp se cerró.'});client.pending.clear();if(client.state.status!=='error')client.state={status:'error',error:'Cliente detenido. Reintenta conectar.'};});
+  child.on('close',(code,signal)=>{client.worker=null;const detail=workerError.trim().split('\n').at(-1);for(const complete of client.pending.values())complete({ok:false,error:detail||'La sesión de WhatsApp se cerró.'});client.pending.clear();if(client.state.status!=='error')client.state={status:'error',error:detail||`Cliente detenido (${signal||(code??'sin código')}). Reintenta conectar.`};});
 }
 export async function clientAPI(req,res,url){
   const reply=(status,data)=>{res.writeHead(status,{'content-type':'application/json','cache-control':'no-store'});res.end(JSON.stringify(data));};
@@ -73,13 +83,15 @@ export async function clientAPI(req,res,url){
       return reply(200,{messages:client.messages.slice(-100),contacts:client.contacts||[],status:client.state.status});
     }
     if(url.pathname.endsWith('/send')&&req.method==='POST'){
-      if(client.state.status!=='connected')return reply(401,{error:'Vincula WhatsApp para entrar.'});
+      if(!client.worker)return reply(401,{error:'Vincula WhatsApp para entrar.'});
+      await waitForConnection(client);
       const payload=await readJson(req),contactId=String(payload.contactId||''),message=String(payload.message||'').trim();
       const known=new Set([...(client.contacts||[]).map(c=>c.id),...(client.messages||[]).map(m=>m.chat)]);
       if(!known.has(contactId))return reply(403,{error:'El contacto no pertenece a esta sesión.'});
       if(!message||message.length>1000)return reply(400,{error:'El mensaje debe tener entre 1 y 1000 caracteres.'});
       const result=await sendThroughClient(client,{chatId:contactId,message});
-      return reply(200,{ok:true,messageId:result.messageId,sentAt:new Date().toISOString()});
+      if(!result.messageId)throw Error('WhatsApp no confirmó el mensaje.');
+      return reply(200,{ok:true,messageId:result.messageId,recipient:result.chatId,sentAt:new Date().toISOString()});
     }
     return reply(404,{error:'Not found'});
   }catch(error){return reply(503,{error:error.message});}
