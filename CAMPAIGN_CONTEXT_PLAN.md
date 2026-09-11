@@ -2,6 +2,8 @@
 
 Este documento fija el comportamiento que debe conservar el MVP y el orden para cerrar los dos problemas visibles en la ficha de Albracom:
 
+El primer ajuste ya implementado en el MVP agrupa aliases conocidos de WhatsApp en el worker y migra membresías antiguas de `campaignId` a `campaignIds[]`. Lo que sigue abajo conserva el diseño de validación para completar la sincronización en vivo y cubrir aliases que WhatsApp entregue después.
+
 1. La conversación debe mostrar todos los mensajes que WhatsApp haya sincronizado, incluida la respuesta del usuario.
 2. Un contacto puede pertenecer a varias campañas sin duplicar el contacto ni perder el historial.
 

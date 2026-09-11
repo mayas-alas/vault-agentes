@@ -72,7 +72,7 @@ export async function clientAPI(req,res,url){
   try{
     const store=client.campaignStore;
     const knownContact=contactId=>[...(client.contacts||[]),...client.messages.map(m=>({id:m.chat,name:m.name}))].find(c=>c.id===contactId);
-    const contactContext=contactId=>({contact:knownContact(contactId),membership:store.state.members[contactId]||null,campaign:store.state.campaigns.find(c=>c.id===store.state.members[contactId]?.campaignId)||null,messages:client.messages.filter(m=>m.chat===contactId).slice(-50).map(({id,fromMe,text,timestamp,status})=>({id,fromMe,text,timestamp,status}))});
+    const contactContext=contactId=>{const member=store.state.members[contactId]||null;return {contact:knownContact(contactId),membership:member,campaigns:store.state.campaigns.filter(c=>member?.campaignIds?.includes(c.id)),messages:client.messages.filter(m=>m.chat===contactId).slice(-50).map(({id,fromMe,text,timestamp,status})=>({id,fromMe,text,timestamp,status}))}};
     if(url.pathname.endsWith('/campaigns')){
       if(req.method==='GET')return reply(200,{campaigns:store.state.campaigns,members:store.state.members});
       if(req.method==='POST'){
@@ -85,10 +85,11 @@ export async function clientAPI(req,res,url){
       const payload=await readJson(req),contactId=String(payload.contactId||'');
       if(!knownContact(contactId))return reply(403,{error:'Contacto fuera de esta sesión.'});
       if(payload.remove){delete store.state.members[contactId];delete store.state.summaries[contactId];store.state.excluded[contactId]=true;store.save();return reply(200,{ok:true});}
-      if(!store.state.campaigns.some(c=>c.id===payload.campaignId))return reply(400,{error:'Selecciona una campaña válida.'});
+      const campaignIds=[...(payload.campaignIds||[payload.campaignId]||[])].filter(id=>store.state.campaigns.some(c=>c.id===id));
+      if(!campaignIds.length)return reply(400,{error:'Selecciona al menos una campaña válida.'});
       const previous=store.state.members[contactId]||{};
       const stage=['selected','presented','engaged','done'].includes(payload.stage)?payload.stage:previous.stage||'selected';
-      store.state.members[contactId]={...previous,campaignId:payload.campaignId,stage,notes:String(payload.notes??previous.notes??'').slice(0,3000),updatedAt:new Date().toISOString()};
+      store.state.members[contactId]={...previous,campaignIds,stage,notes:String(payload.notes??previous.notes??'').slice(0,3000),updatedAt:new Date().toISOString()};
       delete store.state.excluded[contactId];
       store.save();return reply(200,{member:store.state.members[contactId]});
     }
@@ -99,7 +100,7 @@ export async function clientAPI(req,res,url){
     }
     if(url.pathname.endsWith('/summarize')&&req.method==='POST'){
       const {contactId}=await readJson(req);if(!knownContact(contactId))return reply(404,{error:'Contacto no encontrado.'});
-      const context=contactContext(contactId);if(!context.membership)return reply(400,{error:'Agrega el contacto a una campaña para contextualizarlo.'});
+      const context=contactContext(contactId);if(!context.membership?.campaignIds?.length)return reply(400,{error:'Agrega el contacto a una campaña para contextualizarlo.'});
       if(!context.messages.length)return reply(400,{error:'Aún no hay mensajes sincronizados para resumir.'});
       const revision=contextRevision(context.messages,context.membership,context.campaign),cached=store.state.summaries[contactId];
       if(cached?.revision===revision)return reply(200,{summary:cached});
@@ -110,7 +111,7 @@ export async function clientAPI(req,res,url){
       const {contactId,flow}=await readJson(req);if(!knownContact(contactId))return reply(404,{error:'Contacto no encontrado.'});
       const instructions={followup:'Escribe un seguimiento breve, amable y sin presión, basado en el último intercambio.',meeting:'Propón coordinar una conversación. Pregunta disponibilidad; no inventes horarios ni citas confirmadas.',reply:'Redacta una respuesta útil al último mensaje recibido. No inventes información que no tengas.'};
       if(!instructions[flow])return reply(400,{error:'Flujo no disponible.'});
-      const context=contactContext(contactId);if(!context.membership)return reply(400,{error:'Agrega el contacto a una campaña primero.'});
+      const context=contactContext(contactId);if(!context.membership?.campaignIds?.length)return reply(400,{error:'Agrega el contacto a una campaña primero.'});
       const draft=await askLumen(instructions[flow]+' Devuelve sólo el mensaje de WhatsApp, máximo 700 caracteres, identificándote como Lumen. Es un borrador para revisión.',context);return reply(200,{...draft,text:draft.text.slice(0,1000)});
     }
     if(url.pathname.endsWith('/brief')&&req.method==='POST'){

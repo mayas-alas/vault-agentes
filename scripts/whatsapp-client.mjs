@@ -21,19 +21,20 @@ for(const entry of readdirSync('/proc')){
 await new Promise(resolve=>setTimeout(resolve,400));
 const read=(file,fallback)=>{try{return JSON.parse(readFileSync(dir+'/'+file,'utf8'));}catch{return fallback;}};
 const save=(file,data)=>{writeFileSync(dir+'/'+file+'.tmp',JSON.stringify(data));renameSync(dir+'/'+file+'.tmp',dir+'/'+file);};
-let messages=read('recent.json',[]),contacts=read('contacts.json',{}),sock,closed=false,retries=0,pendingOutbound=[];
+let messages=read('recent.json',[]),contacts=read('contacts.json',{}),aliases=read('aliases.json',{}),sock,closed=false,retries=0,pendingOutbound=[];
 const emit=data=>console.log(JSON.stringify(data));
 const phone=jid=>String(jid||'').split('@')[0].split(':')[0];
+const chatId=jid=>aliases[jid]||jid;
 const snapshot=()=>emit({event:'snapshot',messages:messages.slice(-500),contacts:Object.entries(contacts).map(([id,name])=>({id,name}))});
 function capture(items){
   for(const m of items||[]){
-    const jid=m.key?.remoteJid,mid=m.key?.id;
-    if(!jid||!mid||jid==='status@broadcast')continue;
+    const sourceChat=m.key?.remoteJid,mid=m.key?.id,jid=chatId(sourceChat);
+    if(!sourceChat||!mid||sourceChat==='status@broadcast')continue;
     let content=m.message;
     for(let i=0;i<3;i++)content=content?.ephemeralMessage?.message||content?.viewOnceMessage?.message||content;
     const text=content?.conversation||content?.extendedTextMessage?.text||content?.imageMessage?.caption||content?.videoMessage?.caption;
     if(!text)continue;
-    if(!messages.some(x=>x.id===mid&&x.chat===jid))messages.push({id:mid,chat:jid,name:contacts[jid]||m.pushName||phone(jid),fromMe:Boolean(m.key.fromMe),text:String(text).slice(0,8000),timestamp:Number(m.messageTimestamp)*1000});
+    if(!messages.some(x=>x.id===mid&&(x.chat===jid||x.sourceChat===sourceChat)))messages.push({id:mid,chat:jid,sourceChat,name:contacts[jid]||contacts[sourceChat]||m.pushName||phone(jid),fromMe:Boolean(m.key.fromMe),text:String(text).slice(0,8000),timestamp:Number(m.messageTimestamp)*1000});
   }
   messages.sort((a,b)=>a.timestamp-b.timestamp);messages=messages.slice(-500);
   save('recent.json',messages);snapshot();
@@ -44,8 +45,9 @@ async function connect(){
   try{version=(await fetchLatestBaileysVersion()).version;}catch{}
   sock=makeWASocket({auth:state,...(version?{version}:{}),logger:pino({level:'silent'}),browser:['Hermes Agent','Chrome','120.0'],syncFullHistory:false,markOnlineOnConnect:false,getMessage:async()=>({conversation:''})});
   sock.ev.on('creds.update',saveCreds);
-  sock.ev.on('contacts.upsert',items=>{for(const c of items)contacts[c.id]=c.name||c.notify||phone(c.id);save('contacts.json',contacts);});
-  sock.ev.on('messaging-history.set',data=>{for(const c of data.contacts||[])contacts[c.id]=c.name||c.notify||phone(c.id);save('contacts.json',contacts);capture(data.messages);});
+  const indexContacts=items=>{for(const c of items||[]){const canonical=c.id||c.lid;if(!canonical)continue;const name=c.name||c.notify||c.verifiedName||phone(canonical);contacts[canonical]=name;if(c.id)aliases[c.id]=canonical;if(c.lid)aliases[c.lid]=canonical;}save('contacts.json',contacts);save('aliases.json',aliases);};
+  sock.ev.on('contacts.upsert',items=>indexContacts(items));
+  sock.ev.on('messaging-history.set',data=>{indexContacts(data.contacts);capture(data.messages);});
   sock.ev.on('messages.upsert',data=>{capture(data.messages);});
   sock.ev.on('messages.update',updates=>{for(const {key,update} of updates){const message=messages.find(m=>m.id===key.id&&m.chat===key.remoteJid);if(message&&update.status!==undefined)message.status=update.status;}save('recent.json',messages);snapshot();});
   sock.ev.on('connection.update',update=>{

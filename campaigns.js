@@ -8,13 +8,17 @@ export function loadCampaigns(root,id){
   const state=existsSync(file)?JSON.parse(readFileSync(file,'utf8')):{campaigns:[{id:'lumen',name:'Primer contacto · Lumen',goal:'Presentar a Lumen, entender el contexto y acordar el siguiente paso.',createdAt:new Date().toISOString()}],members:{},summaries:{},sends:{}};
   const save=()=>{writeFileSync(file+'.tmp',JSON.stringify(state));renameSync(file+'.tmp',file)};
   state.excluded||={};
+  for(const member of Object.values(state.members)){
+    if(!member.campaignIds)member.campaignIds=member.campaignId?[member.campaignId]:[];
+    delete member.campaignId;
+  }
   return {state,save,destroy:()=>{if(existsSync(file))unlinkSync(file)}};
 }
 export function seedIntroductions(store,messages){
   let changed=false;
   for(const m of messages){
     if(!m.fromMe||!/\bsoy Lumen\b/i.test(m.text)||store.state.members[m.chat]||store.state.excluded[m.chat])continue;
-    store.state.members[m.chat]={campaignId:'lumen',stage:'presented',introducedAt:new Date(m.timestamp||Date.now()).toISOString(),messageId:m.id,notes:'',source:'whatsapp-history'};changed=true;
+    store.state.members[m.chat]={campaignIds:['lumen'],stage:'presented',introducedAt:new Date(m.timestamp||Date.now()).toISOString(),messageId:m.id,notes:'',source:'whatsapp-history'};changed=true;
   }
   if(changed)store.save();
 }
