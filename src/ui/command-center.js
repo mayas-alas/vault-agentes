@@ -34,6 +34,8 @@ export async function openCommandCenter(query=''){
   const live=()=>run===version&&!modal.hidden&&content.querySelector('#cc-status')===status;
   const setStatus=text=>{if(live())status.textContent=text};
   const contactMessages=id=>data.messages.filter(m=>m.chat===id);
+  const activateContact=async contact=>{const workspace=data.workspaces[0];if(!workspace)return setStatus('Crea primero un espacio para Lumen.');try{await api('membership','POST',{contactId:contact.id,workspaceIds:[workspace.id],stage:'active',notes:''});const result=await api('send','POST',{contactId:contact.id,message:intro,flow:'intro',requestId:crypto.randomUUID()});setStatus(`Saludo de Lumen enviado a ${contact.name} · ${result.messageId}`);await refresh();if(live())await select(contact)}catch(error){setStatus(error.message)}};
+  const closeContextMenu=()=>content.querySelector('.cc-context-menu')?.remove();
   function renderFilters(){
     const filters=content.querySelector('#cc-filters');
     filters.innerHTML=[['active','Activos'],['available','Disponibles'],...data.workspaces.map(c=>[c.id,c.name])].map(([id,name])=>`<button data-filter="${escape(id)}" class="${filter===id?'active':''}" aria-pressed="${filter===id}">${escape(name)} <small>${id==='available'?data.contacts.filter(c=>!data.members[c.id]).length:Object.values(data.members).filter(m=>id==='active'||m.workspaceIds?.includes(id)).length}</small></button>`).join('');
@@ -52,7 +54,7 @@ export async function openCommandCenter(query=''){
       return `<button class="contact-result ${selected?.id===c.id?'selected':''}" data-contact="${escape(c.id)}" aria-label="Abrir ${escape(c.name)}" aria-current="${selected?.id===c.id}"><span class="cc-avatar">${escape((c.name||'?').slice(0,2).toUpperCase())}</span><span class="cc-contact-copy"><span class="cc-contact-title"><strong>${escape(c.name||'Sin nombre')}</strong>${member?'<i class="cc-member-dot"></i>':''}</span><small>${escape(last?.text?.slice(0,80)||'Sin mensajes sincronizados')}</small><span class="cc-contact-meta">${escape(member?stages[member.stage]||'En espacio':c.id.endsWith('@g.us')?'Grupo':'Contacto')} · ${escape(date(last?.timestamp))}</span></span></button>`;
     }).join('')||'<div class="cc-no-results">No hay coincidencias.<small>Prueba otro nombre o cambia el filtro.</small></div>';
     if(visible.length>150)results.insertAdjacentHTML('beforeend','<p class="cc-hint">Mostrando 150 contactos. Escribe para afinar la búsqueda.</p>');
-    results.querySelectorAll('[data-contact]').forEach(button=>button.onclick=()=>select(data.contacts.find(c=>c.id===button.dataset.contact)));
+    results.querySelectorAll('[data-contact]').forEach(button=>{const contact=data.contacts.find(c=>c.id===button.dataset.contact);button.onclick=()=>select(contact);button.oncontextmenu=event=>{event.preventDefault();closeContextMenu();const menu=document.createElement('div');menu.className='cc-context-menu';menu.innerHTML=`<button data-action="open">Abrir ficha</button>${data.members[contact.id]?'<button data-action="activate">Reenviar saludo de Lumen</button>':'<button data-action="activate">Activar y saludar</button>'}<button data-action="merge">Unir con otro contacto</button>`;content.append(menu);const rect=content.getBoundingClientRect();menu.style.left=`${Math.min(event.clientX-rect.left,rect.width-210)}px`;menu.style.top=`${Math.min(event.clientY-rect.top,rect.height-130)}px`;menu.querySelector('[data-action="open"]').onclick=()=>{closeContextMenu();select(contact)};menu.querySelector('[data-action="activate"]').onclick=()=>{closeContextMenu();activateContact(contact)};menu.querySelector('[data-action="merge"]').onclick=()=>{closeContextMenu();select(contact)};};});
   }
   async function refresh(){
     const fresh=await api('conversations');if(!live())return;
@@ -125,6 +127,7 @@ export async function openCommandCenter(query=''){
     }));
   }
   search.oninput=()=>{focusIndex=0;renderList()};
+  content.addEventListener('click',event=>{if(!event.target.closest('.cc-context-menu'))closeContextMenu()});
   search.onkeydown=event=>{
     if(event.key==='Enter'){event.preventDefault();select(visible[focusIndex]);}
     if(['ArrowDown','ArrowUp'].includes(event.key)){event.preventDefault();focusIndex=Math.max(0,Math.min(Math.min(visible.length,150)-1,focusIndex+(event.key==='ArrowDown'?1:-1)));const buttons=results.querySelectorAll('button');buttons.forEach((b,i)=>b.classList.toggle('keyboard-active',i===focusIndex));buttons[focusIndex]?.scrollIntoView({block:'nearest'});}
