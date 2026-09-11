@@ -15,7 +15,7 @@ const sendThroughClient=(client,payload)=>new Promise((resolve,reject)=>{
   if(!client.worker?.stdin?.writable)return reject(Error('La sesión de WhatsApp no está disponible.'));
   const requestId=randomBytes(12).toString('hex'),timer=setTimeout(()=>{client.pending.delete(requestId);reject(Error('WhatsApp no confirmó el envío.'))},70000);
   client.pending.set(requestId,result=>{clearTimeout(timer);result.ok?resolve(result):reject(Error(result.error||'WhatsApp rechazó el envío.'))});
-  client.worker.stdin.write(JSON.stringify({type:'send',requestId,...payload})+'\n');
+  client.worker.stdin.write(JSON.stringify({type:payload.type||'send',requestId,...payload})+'\n');
 });
 async function waitForConnection(client,timeout=20000){
   const deadline=Date.now()+timeout;
@@ -92,6 +92,18 @@ export async function clientAPI(req,res,url){
       store.state.members[contactId]={...previous,workspaceIds,stage,notes:String(payload.notes??previous.notes??'').slice(0,3000),updatedAt:new Date().toISOString()};
       delete store.state.excluded[contactId];
       store.save();return reply(200,{member:store.state.members[contactId]});
+    }
+    if(url.pathname.endsWith('/merge')&&req.method==='POST'){
+      const payload=await readJson(req),primaryId=String(payload.primaryId||''),duplicateId=String(payload.duplicateId||'');
+      if(!primaryId||!duplicateId||primaryId===duplicateId||!knownContact(primaryId)||!knownContact(duplicateId))return reply(400,{error:'Selecciona dos contactos válidos y distintos.'});
+      if(client.worker)await sendThroughClient(client,{type:'merge',sourceChat:duplicateId,targetChat:primaryId});
+      client.messages=client.messages.map(message=>message.chat===duplicateId?{...message,chat:primaryId,mergedFrom:duplicateId}:message);
+      const duplicate=client.contacts.find(contact=>contact.id===duplicateId),primary=client.contacts.find(contact=>contact.id===primaryId);
+      client.contacts=client.contacts.filter(contact=>contact.id!==duplicateId);if(primary&&!primary.name&&duplicate?.name)primary.name=duplicate.name;
+      const first=store.state.members[primaryId],second=store.state.members[duplicateId];
+      if(first||second)store.state.members[primaryId]={...(second||{}),...(first||{}),workspaceIds:[...new Set([...(first?.workspaceIds||[]),...(second?.workspaceIds||[])])],notes:[first?.notes,second?.notes].filter(Boolean).join('\n\n'),updatedAt:new Date().toISOString()};
+      delete store.state.members[duplicateId];delete store.state.summaries[primaryId];delete store.state.summaries[duplicateId];store.save();
+      return reply(200,{ok:true,primaryId,duplicateId,messageCount:client.messages.filter(message=>message.chat===primaryId).length});
     }
     if(url.pathname.endsWith('/context')&&req.method==='GET'){
       const contactId=url.searchParams.get('contactId');if(!knownContact(contactId))return reply(404,{error:'Contacto no encontrado.'});

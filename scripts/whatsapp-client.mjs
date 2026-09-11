@@ -75,6 +75,10 @@ createInterface({input:process.stdin}).on('line',async line=>{
   let outgoing;
   try{
     const command=JSON.parse(line);
+    if(command.type==='merge'&&command.requestId){
+      aliases[command.sourceChat]=command.targetChat;for(const message of messages)if(message.chat===command.sourceChat)message.chat=command.targetChat;
+      if(contacts[command.sourceChat]&&!contacts[command.targetChat])contacts[command.targetChat]=contacts[command.sourceChat];delete contacts[command.sourceChat];save('aliases.json',aliases);save('contacts.json',contacts);save('recent.json',messages);snapshot();emit({event:'sendResult',requestId:command.requestId,ok:true,messageId:'merge',chatId:command.targetChat});return;
+    }
     if(command.type!=='send'||!command.requestId)return;
     if(!sock?.user)throw Error('La sesión de WhatsApp no está conectada.');
     const chatId=command.chatId;
